@@ -1,14 +1,26 @@
-import { BarChart2, Activity, AlertTriangle, Settings } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { BarChart2, Activity, AlertTriangle, Settings, Users, LogOut } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 
-const NAV_ITEMS = [
-  { to: '/', icon: BarChart2, label: 'Prediction' },
-  { to: '/dashboard', icon: Activity, label: 'Dashboard' },
-  { to: '/poison', icon: AlertTriangle, label: 'Poison Log' },
-  { to: '/admin', icon: Settings, label: 'Admin' },
+const ALL_NAV_ITEMS = [
+  { to: '/', icon: BarChart2, label: 'Prediction', adminOnly: false },
+  { to: '/dashboard', icon: Activity, label: 'Dashboard', adminOnly: false },
+  { to: '/poison', icon: AlertTriangle, label: 'Poison Log', adminOnly: true },
+  { to: '/admin', icon: Settings, label: 'Admin', adminOnly: true },
+  { to: '/users', icon: Users, label: 'Users', adminOnly: true },
 ];
 
 export default function Sidebar() {
+  const { isAdmin, user, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  const navItems = ALL_NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <nav className="fixed left-0 top-0 h-screen w-[60px] bg-bg-card border-r border-border flex flex-col items-center z-50">
       {/* Logo mark */}
@@ -20,7 +32,7 @@ export default function Sidebar() {
 
       {/* Nav items */}
       <div className="flex-1 flex flex-col items-center pt-4 gap-2">
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+        {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -52,14 +64,45 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* Bottom: Cycle badge */}
-      <div className="pb-4 flex flex-col items-center gap-2">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 bg-accent-mint animate-pulse" />
-        </div>
-        <div className="text-[9px] font-mono text-text-muted tracking-wider leading-tight text-center">
-          <span className="text-text-primary">C7</span>
-        </div>
+      {/* Bottom section */}
+      <div className="pb-4 flex flex-col items-center gap-3">
+        {/* User avatar */}
+        {user && (
+          <div className="group relative flex items-center justify-center">
+            <div className={`w-7 h-7 flex items-center justify-center text-[10px] font-mono font-bold border ${
+              isAdmin ? 'border-accent-warning text-accent-warning' : 'border-accent-cyan text-accent-cyan'
+            }`}>
+              {user.email[0].toUpperCase()}
+            </div>
+            {/* Tooltip with email + role */}
+            <div className="absolute left-[60px] px-2 py-1 bg-bg-panel border border-border font-mono text-[10px] text-text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+              {user.email} · <span className={isAdmin ? 'text-accent-warning' : 'text-accent-cyan'}>{user.role}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Cycle badge (admin only) */}
+        {isAdmin && (
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-accent-mint animate-pulse" />
+            </div>
+            <div className="text-[9px] font-mono text-text-muted tracking-wider leading-tight text-center">
+              <span className="text-text-primary">C7</span>
+            </div>
+          </div>
+        )}
+
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center h-9 text-text-muted hover:text-accent-danger transition-colors group relative"
+        >
+          <LogOut size={16} />
+          <div className="absolute left-[60px] px-2 py-1 bg-bg-panel border border-border text-xs font-mono text-accent-danger opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+            Logout
+          </div>
+        </button>
       </div>
     </nav>
   );
