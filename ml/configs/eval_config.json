@@ -1,0 +1,8 @@
+{
+  "model_name_or_path": "./output/stock/current",
+  "output_dir": "./output/stock/eval",
+  "domain": "stock",
+  "do_eval": true,
+  "per_device_eval_batch_size": 4,
+  "seed": 42
+}

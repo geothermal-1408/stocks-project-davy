@@ -1,0 +1,15 @@
+# Poison detection thresholds
+poison_detector:
+  sigma_thresh: 3.0
+  swing_thresh: 0.10
+  volume_spike_multiplier: 5
+  window_size: 30
+  rolling_baseline: 90
+
+triggers:
+  FORGET_TRIGGER: 5
+  MIN_RETAIN_SIZE: 20
+
+regime_change:
+  enabled: false
+  p_value_threshold: 0.01

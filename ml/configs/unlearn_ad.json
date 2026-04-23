@@ -1,0 +1,21 @@
+{
+  "model_name_or_path": "./models/Qwen1.5-0.5B",
+  "target_model_name_or_path": "./output/stock/finetune",
+  "output_dir": "./output/stock",
+  "domain": "stock",
+  "unlearn_method": "ascent_plus_descent",
+  "per_device_train_batch_size": 1,
+  "gradient_accumulation_steps": 8,
+  "num_train_epochs": 1,
+  "learning_rate": 5e-6,
+  "warmup_ratio": 0.03,
+  "lr_scheduler_type": "cosine",
+  "weight_decay": 0.0,
+  "fp16": true,
+  "bf16": false,
+  "model_max_length": 256,
+  "positive_ratio": 3,
+  "positive_factor": 1.0,
+  "save_strategy": "no",
+  "seed": 42
+}

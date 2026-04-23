@@ -1,0 +1,15 @@
+# Data ingestion configuration
+ingestion:
+  tickers:
+    - AAPL
+  fetch_period: "2y"
+  interval: "1d"
+  window_size: 30
+  stride: 1
+
+# Storage paths
+paths:
+  raw_dir: "./data/raw"
+  windows_dir: "./data/windows"
+  buffers_dir: "./data/buffers"
+  validation_dir: "./data/validation"

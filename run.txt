@@ -1,0 +1,17 @@
+cd backend
+pip install -e ".[dev]"
+uvicorn app.main:app --reload --port 8000
+# Then visit http://localhost:8000/docs
+
+What is built?
+Layer	|  Files  |	Key Highlights
+ML Method |	4 trainers	| AscentPlusDescentTrainer (primary), AKL, GA — adapted from your llm_unlearn/
+ML Data | 	6 modules |     yfinance ingestion → 30-day sliding windows → 7-signal poison detector → buffer routing → tokenization
+ML Training	| 2 modules | Fine-tune + unlearn entry points dispatching to AD/AKL/GA
+ML Evaluation	| 4 modules | PPL eval, MIA attack (Min-K%), MAE/RMSE/directional accuracy
+ML Prediction	| 3 modules | Singleton predictor + text decoder (regex) + confidence bands (N-sample sampling)
+ML Pipeline	| 3 modules | CycleManager (full super-learning loop with 5 deployment gates), IngestLoop, ModelRegistry (symlink management)
+Backend API	| 7 routers	| /predict, /ingest, /poison/log, /metrics, /data/ohlcv, /admin/unlearn, /stream/events (SSE)
+Backend Services	| 6 services	| Each router backed by a service wrapping the ML pipeline
+Backend DB |	6 ORM models |	All tables from the spec's SQL schema
+Infrastructure |	4 files |	Docker Compose, Dockerfile, nginx, .env.example
