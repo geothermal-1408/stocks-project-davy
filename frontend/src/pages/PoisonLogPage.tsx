@@ -23,7 +23,7 @@ export default function PoisonLogPage() {
   const [injectSeverity, setInjectSeverity] = useState(3);
   const [injectResult, setInjectResult] = useState<string | null>(null);
 
-  const { events: poisonEvents, isLive } = usePoisonLog(
+  const { events: poisonEvents, isLive: _isLive } = usePoisonLog(
     1, 100,
     tickerFilter === 'ALL' ? undefined : tickerFilter,
     typeFilter === 'ALL' ? undefined : typeFilter

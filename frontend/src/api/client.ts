@@ -42,6 +42,25 @@ export async function login(email: string, password: string) {
   return data;
 }
 
+export async function register(email: string, password: string, role: string = 'user') {
+  const res = await fetch(`${BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, role }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: 'Registration failed' }));
+    throw new Error(body.detail || 'Registration failed');
+  }
+  const data = await res.json();
+  setToken(data.access_token);
+  return data;
+}
+
+export async function fetchMe() {
+  return request<{ email: string; role: string }>('/auth/me');
+}
+
 // ── Predict ──
 export async function fetchPrediction(ticker = 'AAPL', samples = 10) {
   return request<any>(`/predict?ticker=${ticker}&samples=${samples}`);
@@ -91,6 +110,17 @@ export async function injectPoison(ticker: string, injectType: string, targetDat
     method: 'POST',
     body: JSON.stringify({ ticker, inject_type: injectType, target_date: targetDate }),
   });
+}
+
+// ── Admin: Users ──
+export async function fetchUsers() {
+  return request<any>('/admin/users');
+}
+
+export async function fetchUserActivity(page = 1, limit = 20, email?: string) {
+  let url = `/admin/activity?page=${page}&limit=${limit}`;
+  if (email) url += `&email=${encodeURIComponent(email)}`;
+  return request<any>(url);
 }
 
 // ── Health ──

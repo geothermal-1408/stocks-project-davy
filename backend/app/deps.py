@@ -73,6 +73,18 @@ async def require_admin(
     return user
 
 
+async def require_user(
+    user: Optional[dict] = Depends(get_current_user),
+) -> dict:
+    """Require any authenticated user."""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    return user
+
+
 def get_redis():
     """Get Redis connection (returns None if unavailable)."""
     try:

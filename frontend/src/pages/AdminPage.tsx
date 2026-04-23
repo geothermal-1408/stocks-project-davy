@@ -23,9 +23,9 @@ export default function AdminPage() {
 
   const severityLabels = ['subtle', 'moderate', 'severe', 'extreme', 'nuclear'];
 
-  const [fetchStatus, setFetchStatus] = useState<string | null>(null);
+  const [_fetchStatus, setFetchStatus] = useState<string | null>(null);
   const [injectResult, setInjectResult] = useState<string | null>(null);
-  const [rollbackStatus, setRollbackStatus] = useState<string | null>(null);
+  const [_rollbackStatus, setRollbackStatus] = useState<string | null>(null);
   const { metrics } = useMetrics();
 
   const handleFetch = async () => {
