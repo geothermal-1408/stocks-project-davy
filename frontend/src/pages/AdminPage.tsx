@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
+import { useMetrics } from '../hooks/useMetrics';
 import { CYCLE_HISTORY } from '../data/mockData';
+import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback } from '../api/client';
 import type { PoisonType } from '../types';
 
 const METHODS = ['AD', 'AKL', 'GA', 'RANDOM_LABEL'] as const;
@@ -21,55 +23,49 @@ export default function AdminPage() {
 
   const severityLabels = ['subtle', 'moderate', 'severe', 'extreme', 'nuclear'];
 
-  const handleFetch = () => {
-    setPipelineState({
-      status: 'ingesting',
-      ticker: fetchTicker,
-      progress: 0,
-      total: 30,
-    });
-    // Simulate progress
-    let prog = 0;
-    const interval = setInterval(() => {
-      prog += Math.floor(Math.random() * 5) + 1;
-      if (prog >= 30) {
-        clearInterval(interval);
-        setPipelineState({ status: 'idle' });
-      } else {
-        setPipelineState({
-          status: 'ingesting',
-          ticker: fetchTicker,
-          progress: prog,
-          total: 30,
-        });
-      }
-    }, 500);
+  const [fetchStatus, setFetchStatus] = useState<string | null>(null);
+  const [injectResult, setInjectResult] = useState<string | null>(null);
+  const [rollbackStatus, setRollbackStatus] = useState<string | null>(null);
+  const { metrics } = useMetrics();
+
+  const handleFetch = async () => {
+    setPipelineState({ status: 'ingesting', ticker: fetchTicker, progress: 0, total: 30 });
+    setFetchStatus(null);
+    try {
+      await triggerIngest(fetchTicker);
+      setFetchStatus('Ingest triggered successfully');
+    } catch {
+      setFetchStatus('Backend unavailable — simulated locally');
+      // Simulate progress for demo
+      let prog = 0;
+      const interval = setInterval(() => {
+        prog += Math.floor(Math.random() * 5) + 1;
+        if (prog >= 30) { clearInterval(interval); setPipelineState({ status: 'idle' }); }
+        else { setPipelineState({ status: 'ingesting', ticker: fetchTicker, progress: prog, total: 30 }); }
+      }, 500);
+    }
   };
 
-  const handleTriggerCycle = () => {
+  const handleTriggerCycle = async () => {
     setIsUnlearning(true);
     setUnlearnProgress(0);
-    setPipelineState({
-      status: 'unlearning',
-      cycle: 8,
-      method: selectedMethod.toLowerCase(),
-      epoch: '1/1',
-    });
-
-    const interval = setInterval(() => {
-      setUnlearnProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUnlearning(false);
-          setPipelineState({ status: 'idle' });
-          return 100;
-        }
-        return prev + Math.floor(Math.random() * 15) + 5;
-      });
-    }, 600);
+    setPipelineState({ status: 'unlearning', cycle: (metrics.current_cycle || 7) + 1, method: selectedMethod.toLowerCase(), epoch: '1/1' });
+    try {
+      const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'akl', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
+      await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent');
+    } catch {
+      // Simulate progress for demo
+      const interval = setInterval(() => {
+        setUnlearnProgress(prev => {
+          if (prev >= 100) { clearInterval(interval); setIsUnlearning(false); setPipelineState({ status: 'idle' }); return 100; }
+          return prev + Math.floor(Math.random() * 15) + 5;
+        });
+      }, 600);
+    }
   };
 
-  const recentCycles = [...CYCLE_HISTORY].reverse().slice(0, 5);
+  const displayHistory = metrics.history?.length > 0 ? metrics.history : CYCLE_HISTORY;
+  const recentCycles = [...displayHistory].reverse().slice(0, 5);
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4">
@@ -200,7 +196,20 @@ export default function AdminPage() {
                 {severityLabels.map(l => <span key={l}>{l}</span>)}
               </div>
             </div>
-            <button className="w-full py-1.5 border border-accent-warning text-accent-warning font-mono text-xs hover:bg-accent-warning/10 transition-colors">
+            {injectResult && (
+              <div className="p-1.5 border border-accent-mint/30 bg-accent-mint/5 font-mono text-[9px] text-accent-mint">
+                {injectResult}
+              </div>
+            )}
+            <button
+              onClick={async () => {
+                try {
+                  const result = await injectPoison(injectTicker, injectType, new Date().toISOString().split('T')[0]);
+                  setInjectResult(result.detected ? '✓ Detected' : '✗ Missed');
+                } catch { setInjectResult('Backend offline — simulated'); }
+              }}
+              className="w-full py-1.5 border border-accent-warning text-accent-warning font-mono text-xs hover:bg-accent-warning/10 transition-colors"
+            >
               INJECT
             </button>
           </div>
@@ -331,9 +340,15 @@ export default function AdminPage() {
                 )}
               </div>
               <button
-                disabled={cycle.cycle_num === 7}
+                disabled={cycle.cycle_num === (metrics.current_cycle || 7)}
+                onClick={async () => {
+                  try {
+                    await triggerRollback(cycle.cycle_num);
+                    setRollbackStatus(`Rolled back to cycle ${cycle.cycle_num}`);
+                  } catch { setRollbackStatus('Backend offline — rollback simulated'); }
+                }}
                 className={`px-3 py-1 border font-mono text-[10px] transition-colors ${
-                  cycle.cycle_num === 7
+                  cycle.cycle_num === (metrics.current_cycle || 7)
                     ? 'border-border text-text-muted cursor-not-allowed'
                     : 'border-accent-warning text-accent-warning hover:bg-accent-warning/10'
                 }`}

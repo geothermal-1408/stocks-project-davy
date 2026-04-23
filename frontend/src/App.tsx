@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAppStore } from './store/appStore';
+import { usePipelineStream } from './hooks/usePipelineStream';
 import Sidebar from './components/shared/Sidebar';
 import PredictionPage from './pages/PredictionPage';
 import DashboardPage from './pages/DashboardPage';
@@ -8,6 +9,9 @@ import AdminPage from './pages/AdminPage';
 
 function App() {
   const { poisonFlashActive, triggerPoisonFlash } = useAppStore();
+
+  // Connect to backend SSE for real-time pipeline events
+  usePipelineStream();
 
   return (
     <BrowserRouter>

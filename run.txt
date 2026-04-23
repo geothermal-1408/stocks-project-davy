@@ -1,17 +1,188 @@
-cd backend
-pip install -e ".[dev]"
-uvicorn app.main:app --reload --port 8000
-# Then visit http://localhost:8000/docs
+╔══════════════════════════════════════════════════════════════════════════╗
+║                    StockSense-Unlearn — Run Guide                       ║
+╚══════════════════════════════════════════════════════════════════════════╝
 
-What is built?
-Layer	|  Files  |	Key Highlights
-ML Method |	4 trainers	| AscentPlusDescentTrainer (primary), AKL, GA — adapted from your llm_unlearn/
-ML Data | 	6 modules |     yfinance ingestion → 30-day sliding windows → 7-signal poison detector → buffer routing → tokenization
-ML Training	| 2 modules | Fine-tune + unlearn entry points dispatching to AD/AKL/GA
-ML Evaluation	| 4 modules | PPL eval, MIA attack (Min-K%), MAE/RMSE/directional accuracy
-ML Prediction	| 3 modules | Singleton predictor + text decoder (regex) + confidence bands (N-sample sampling)
-ML Pipeline	| 3 modules | CycleManager (full super-learning loop with 5 deployment gates), IngestLoop, ModelRegistry (symlink management)
-Backend API	| 7 routers	| /predict, /ingest, /poison/log, /metrics, /data/ohlcv, /admin/unlearn, /stream/events (SSE)
-Backend Services	| 6 services	| Each router backed by a service wrapping the ML pipeline
-Backend DB |	6 ORM models |	All tables from the spec's SQL schema
-Infrastructure |	4 files |	Docker Compose, Dockerfile, nginx, .env.example
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PREREQUISITES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Python 3.11+    → https://python.org
+  2. Node.js 18+     → https://nodejs.org
+  3. Git             → https://git-scm.com
+
+  Optional (for production):
+  4. Docker Desktop  → https://docker.com
+  5. PostgreSQL 15   → (or use default SQLite)
+  6. Redis 7         → (or use in-memory fallback)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  QUICK START (LOCAL DEV — NO DOCKER)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Open TWO terminals:
+
+  ┌─────────────────────────────────────────────────────┐
+  │  TERMINAL 1: Backend (FastAPI + ML Pipeline)        │
+  └─────────────────────────────────────────────────────┘
+
+    cd backend
+    pip install -e ".[dev]"
+    uvicorn app.main:app --reload --port 8000
+
+    → API docs:    http://localhost:8000/docs
+    → Health:      http://localhost:8000/health
+    → DB:          Auto-creates stocksense.db (SQLite)
+    → Admin user:  admin@stocksense.local / admin
+
+  ┌─────────────────────────────────────────────────────┐
+  │  TERMINAL 2: Frontend (React + Vite)                │
+  └─────────────────────────────────────────────────────┘
+
+    cd frontend
+    npm install
+    npm run dev
+
+    → Dashboard:   http://localhost:3000
+    → Prediction:  http://localhost:3000/
+    → Metrics:     http://localhost:3000/dashboard
+    → Poison Log:  http://localhost:3000/poison
+    → Admin:       http://localhost:3000/admin
+
+  ┌─────────────────────────────────────────────────────┐
+  │  HOW IT CONNECTS                                    │
+  └─────────────────────────────────────────────────────┘
+
+    Frontend :3000  ──/api/*──▶  Backend :8000  ──▶  ML Pipeline
+                    ──/stream/*──▶  SSE events
+
+    Vite proxy (vite.config.ts) forwards:
+      /api/*     → http://localhost:8000/*  (REST)
+      /stream/*  → http://localhost:8000/*  (SSE)
+
+    If backend is down, frontend falls back to mock data automatically.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PRODUCTION START (DOCKER)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    1. Copy .env.example → .env and edit values
+    2. docker-compose up --build
+
+    Services started:
+      postgres    → :5432
+      redis       → :6379
+      backend     → :8000
+      celery      → background worker
+      celery_beat → scheduled ingest cron
+      nginx       → :80 (reverse proxy)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  API ENDPOINTS (Backend :8000)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  GET  /health               → Health check
+  POST /auth/login            → JWT login (form: username, password)
+  GET  /predict?ticker=AAPL   → Next-day OHLCV prediction
+  GET  /data/ohlcv?ticker=AAPL&days=90  → Historical candlestick data
+  GET  /metrics               → PPL, MAE, AUC, cycle history, buffer status
+  GET  /poison/log            → Paginated poison events
+  POST /ingest/trigger        → Manual data ingest (admin)
+  GET  /ingest/status         → Recent ingest jobs
+  POST /admin/unlearn         → Trigger unlearn cycle (admin)
+  POST /admin/rollback        → Rollback to prior cycle (admin)
+  POST /admin/inject-poison   → Test poison detector (admin)
+  GET  /stream/events         → SSE real-time pipeline events
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ML PIPELINE (Standalone)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  The ML pipeline can also run standalone without the backend:
+
+    cd ml
+    pip install torch transformers datasets accelerate yfinance pandas scipy scikit-learn
+
+  Data ingestion:
+    python -m stocksense.data.ingestion --ticker AAPL --period 2y
+
+  Fine-tune on clean data:
+    python -m stocksense.training.finetune --model_path ./models/Qwen1.5-0.5B --data_path ./data
+
+  Run unlearning:
+    python -m stocksense.training.run_unlearn --method ascent_plus_descent
+
+  Evaluate:
+    python -m stocksense.evaluation.run_eval --model_path ./output/stock/current
+
+  Run MIA attack:
+    python -m stocksense.evaluation.run_mia --model_path ./output/stock/current
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PROJECT ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  stocks-project/
+  │
+  ├── frontend/                   React + Vite + Tailwind
+  │   ├── src/
+  │   │   ├── api/client.ts       API client → all backend endpoints
+  │   │   ├── hooks/              usePrediction, useOHLCV, useMetrics, etc.
+  │   │   ├── pages/              PredictionPage, Dashboard, PoisonLog, Admin
+  │   │   ├── components/         Charts, tables, panels
+  │   │   └── store/              Zustand state
+  │   └── vite.config.ts          Proxy /api → :8000
+  │
+  ├── backend/                    FastAPI + SQLAlchemy
+  │   └── app/
+  │       ├── main.py             App entry point
+  │       ├── config.py           Settings (env vars)
+  │       ├── routers/            7 API routers
+  │       ├── services/           6 business logic services
+  │       ├── models/             6 ORM models
+  │       ├── workers/            PredictorWorker, PipelineWorker, Scheduler
+  │       └── db/                 Session, init, migrations
+  │
+  ├── ml/                         ML Pipeline
+  │   ├── stocksense/
+  │   │   ├── method/             AD, AKL, GA trainers
+  │   │   ├── data/               Ingestion, poison detector, buffers
+  │   │   ├── training/           Fine-tune, unlearn
+  │   │   ├── evaluation/         PPL, MIA, prediction eval
+  │   │   ├── prediction/         StockPredictor, decoder, confidence
+  │   │   └── pipeline/           CycleManager, IngestLoop, ModelRegistry
+  │   └── configs/                YAML/JSON hyperparameters
+  │
+  ├── nginx/nginx.conf            Reverse proxy
+  ├── docker-compose.yml          Full stack orchestration
+  └── .env.example                Environment variables template
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHAT'S BUILT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Layer             Files   Key Highlights
+  ─────────────     ─────   ──────────────────────────────────────────────
+  ML Method         4       AscentPlusDescentTrainer, AKL, GA
+  ML Data           6       yfinance → windows → 7-signal poison detector
+  ML Training       2       Fine-tune + unlearn dispatching
+  ML Evaluation     4       PPL, MIA (Min-K%), MAE/RMSE
+  ML Prediction     3       Singleton predictor + confidence bands
+  ML Pipeline       3       CycleManager + IngestLoop + ModelRegistry
+  Backend API       7       /predict, /ingest, /poison, /metrics, /admin, /stream, /auth
+  Backend Services  6       Each router backed by ML pipeline wrapper
+  Backend DB        6       User, PredictionLog, PoisonEvent, CycleRecord, OHLCV, IngestJob
+  Frontend Pages    4       Prediction, Dashboard, PoisonLog, Admin
+  Frontend Hooks    5       usePrediction, useOHLCV, useMetrics, usePoisonLog, usePipelineStream
+  Frontend API      1       client.ts → all backend endpoints
+  Infrastructure    4       Docker Compose, Dockerfile, nginx, .env
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Frontend works standalone with mock data — no backend needed for UI preview
+  • When backend is running, all hooks auto-switch to live API data
+  • SSE events stream in real-time during ingest/unlearn cycles
+  • Default admin credentials: admin@stocksense.local / admin
+  • SQLite is default for dev; set DATABASE_URL for PostgreSQL
+  • Redis is optional; in-memory fallback for SSE and job queue

@@ -1,14 +1,14 @@
 import { useAppStore } from '../store/appStore';
-import { OHLCV_DATA, POISON_ANNOTATIONS, PREDICTIONS } from '../data/mockData';
+import { useOHLCV } from '../hooks/useOHLCV';
+import { usePrediction } from '../hooks/usePrediction';
 import CandlestickChart from '../components/prediction/CandlestickChart';
 import PredictionPanel from '../components/prediction/PredictionPanel';
 import TickerSelector from '../components/prediction/TickerSelector';
 
 export default function PredictionPage() {
   const { selectedTicker } = useAppStore();
-  const data = OHLCV_DATA[selectedTicker];
-  const annotations = POISON_ANNOTATIONS[selectedTicker];
-  const prediction = PREDICTIONS[selectedTicker];
+  const { data, poisonAnnotations, isLive: isDataLive } = useOHLCV(selectedTicker);
+  const { prediction, isLive: isPredLive } = usePrediction(selectedTicker);
   const lastCandle = data[data.length - 1];
 
   return (
@@ -16,9 +16,16 @@ export default function PredictionPage() {
       {/* Top bar */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border shrink-0">
         <TickerSelector />
-        <h1 className="font-display font-bold text-base text-text-primary tracking-[0.3em]">
-          STOCKSENSE
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display font-bold text-base text-text-primary tracking-[0.3em]">
+            STOCKSENSE
+          </h1>
+          {(isDataLive || isPredLive) && (
+            <span className="px-1.5 py-0.5 bg-accent-mint/10 border border-accent-mint/30 text-accent-mint font-mono text-[9px]">
+              LIVE
+            </span>
+          )}
+        </div>
         <div className={`flex items-center gap-2 px-3 py-1 border font-mono text-sm ${
           prediction.directional === 'up'
             ? 'border-accent-mint text-accent-mint'
@@ -37,7 +44,7 @@ export default function PredictionPage() {
           <div className="flex-1 min-h-0">
             <CandlestickChart
               data={data}
-              poisonAnnotations={annotations}
+              poisonAnnotations={poisonAnnotations}
               predictionCandle={{
                 open: prediction.prediction.open,
                 high: prediction.prediction.high,

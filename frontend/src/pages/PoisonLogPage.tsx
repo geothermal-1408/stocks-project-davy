@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
-import { POISON_EVENTS, TICKERS } from '../data/mockData';
+import { usePoisonLog } from '../hooks/usePoisonLog';
+import { TICKERS } from '../data/mockData';
+import { injectPoison } from '../api/client';
 import { getPoisonColor } from '../hooks/useUtils';
 import type { PoisonType, PoisonEvent } from '../types';
 
@@ -19,8 +21,15 @@ export default function PoisonLogPage() {
   const [showInjectModal, setShowInjectModal] = useState(false);
   const [injectType, setInjectType] = useState<string>('flash_crash');
   const [injectSeverity, setInjectSeverity] = useState(3);
+  const [injectResult, setInjectResult] = useState<string | null>(null);
 
-  const filteredEvents = POISON_EVENTS
+  const { events: poisonEvents, isLive } = usePoisonLog(
+    1, 100,
+    tickerFilter === 'ALL' ? undefined : tickerFilter,
+    typeFilter === 'ALL' ? undefined : typeFilter
+  );
+
+  const filteredEvents = poisonEvents
     .filter(e => tickerFilter === 'ALL' || e.ticker === tickerFilter)
     .filter(e => typeFilter === 'ALL' || e.poison_type === typeFilter)
     .sort((a, b) => {
@@ -248,8 +257,21 @@ export default function PoisonLogPage() {
                 </div>
               </div>
 
+              {injectResult && (
+                <div className="p-2 border border-accent-mint/30 bg-accent-mint/5 font-mono text-[10px] text-accent-mint">
+                  {injectResult}
+                </div>
+              )}
+
               <button
-                onClick={() => setShowInjectModal(false)}
+                onClick={async () => {
+                  try {
+                    const result = await injectPoison(tickerFilter === 'ALL' ? 'AAPL' : tickerFilter, injectType, new Date().toISOString().split('T')[0]);
+                    setInjectResult(result.detected ? '✓ Injected & detected — test passed' : '✗ Injected but not detected — check thresholds');
+                  } catch {
+                    setInjectResult('Backend unavailable — inject simulated locally');
+                  }
+                }}
                 className="w-full py-2 border border-accent-warning text-accent-warning font-mono text-sm hover:bg-accent-warning/10 transition-colors"
               >
                 INJECT
