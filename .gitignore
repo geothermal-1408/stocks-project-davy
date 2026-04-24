@@ -18,4 +18,5 @@ ml/stocksense/models/__pycache__/
 ml/stocksense/utils/__pycache__/
 ml/stocksense/venv/
 ml/stocksense/prediction/__pycache__/
+ml/stocksense/pipeline/__pycache__/
 backend/stocksense.db
