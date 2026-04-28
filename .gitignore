@@ -20,3 +20,6 @@ ml/stocksense/venv/
 ml/stocksense/prediction/__pycache__/
 ml/stocksense/pipeline/__pycache__/
 backend/stocksense.db
+.env
+st.md
+stock.md
