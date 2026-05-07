@@ -128,3 +128,52 @@ export interface AppConfig {
   min_retain: number;
   learning_rate: string;
 }
+
+export interface Investment {
+  id: string;
+  ticker: string;
+  invested_amount: number;
+  buy_price: number;
+  units: number;
+  current_price: number | null;
+  profit_loss: number | null;
+  profit_loss_pct: number | null;
+  status: 'active' | 'withdrawn';
+  withdrawn_at: string | null;
+  withdraw_price: number | null;
+  withdraw_amount: number | null;
+  model_cycle: number | null;
+  prediction_direction: string | null;
+  confidence_high: number | null;
+  confidence_low: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PortfolioSummary {
+  total_invested: number;
+  total_current_value: number;
+  total_profit_loss: number;
+  total_profit_loss_pct: number;
+  active_investments: number;
+  withdrawn_investments: number;
+  investments: Investment[];
+}
+
+export interface AdminInvestmentView {
+  id: string;
+  user_email: string;
+  ticker: string;
+  invested_amount: number;
+  buy_price: number;
+  units: number;
+  current_price: number | null;
+  profit_loss: number | null;
+  profit_loss_pct: number | null;
+  status: string;
+  withdrawn_at: string | null;
+  withdraw_price: number | null;
+  withdraw_amount: number | null;
+  model_cycle: number | null;
+  created_at: string | null;
+}

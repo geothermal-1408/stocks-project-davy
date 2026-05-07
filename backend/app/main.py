@@ -52,10 +52,11 @@ app.add_middleware(
 )
 
 # --- Register Routers ---
-from app.routers import predict, ingest, poison, metrics, admin, stream, auth
+from app.routers import predict, ingest, poison, metrics, admin, stream, auth, invest
 
 app.include_router(auth.router, tags=["auth"])
 app.include_router(predict.router, tags=["predict"])
+app.include_router(invest.router, tags=["invest"])
 app.include_router(ingest.router, tags=["ingest"])
 app.include_router(poison.router, tags=["poison"])
 app.include_router(metrics.router, tags=["metrics"])

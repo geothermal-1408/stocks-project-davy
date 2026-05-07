@@ -19,6 +19,7 @@ async def create_tables():
     import app.models.cycle_record  # noqa: F401
     import app.models.ohlcv_cache  # noqa: F401
     import app.models.ingest_job  # noqa: F401
+    import app.models.investment  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

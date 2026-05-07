@@ -1,33 +1,35 @@
 /**
- * usePoisonLog — fetches paginated poison event log from backend.
+ * usePoisonLog — fetches paginated poison event log from backend only (no mock fallback).
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { PoisonEvent } from '../types';
 import { fetchPoisonLog } from '../api/client';
-import { POISON_EVENTS } from '../data/mockData';
 
 export function usePoisonLog(page = 1, limit = 20, ticker?: string, type?: string) {
-  const [events, setEvents] = useState<PoisonEvent[]>(POISON_EVENTS);
-  const [total, setTotal] = useState(POISON_EVENTS.length);
+  const [events, setEvents] = useState<PoisonEvent[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await fetchPoisonLog(page, limit, ticker, type);
       if (data && data.events) {
         setEvents(data.events);
         setTotal(data.total);
         setIsLive(true);
+      } else {
+        setEvents([]);
+        setTotal(0);
+        setIsLive(false);
       }
-    } catch {
-      // Filter mock data by ticker/type
-      let filtered = [...POISON_EVENTS];
-      if (ticker) filtered = filtered.filter(e => e.ticker === ticker);
-      if (type) filtered = filtered.filter(e => e.poison_type === type);
-      setEvents(filtered);
-      setTotal(filtered.length);
+    } catch (err: any) {
+      setEvents([]);
+      setTotal(0);
+      setError(err.message || 'Failed to fetch poison log');
       setIsLive(false);
     } finally {
       setLoading(false);
@@ -36,5 +38,5 @@ export function usePoisonLog(page = 1, limit = 20, ticker?: string, type?: strin
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { events, total, loading, isLive, refresh };
+  return { events, total, loading, error, isLive, refresh };
 }

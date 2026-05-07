@@ -1,30 +1,36 @@
 /**
- * useOHLCV — fetches OHLCV data from backend, falls back to mock.
+ * useOHLCV — fetches OHLCV data from backend only (no mock fallback).
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { OHLCV, PoisonAnnotation } from '../types';
 import { fetchOHLCV } from '../api/client';
-import { OHLCV_DATA, POISON_ANNOTATIONS, type Ticker } from '../data/mockData';
 
-export function useOHLCV(ticker: Ticker, days = 90) {
-  const [data, setData] = useState<OHLCV[]>(OHLCV_DATA[ticker] || []);
-  const [poisonAnnotations, setPoisonAnnotations] = useState<PoisonAnnotation[]>(POISON_ANNOTATIONS[ticker] || []);
+export function useOHLCV(ticker: string, days = 90) {
+  const [data, setData] = useState<OHLCV[]>([]);
+  const [poisonAnnotations, setPoisonAnnotations] = useState<PoisonAnnotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const resp = await fetchOHLCV(ticker, days);
       if (resp && resp.data && resp.data.length > 0) {
         setData(resp.data);
         setPoisonAnnotations(resp.poison_annotations || []);
         setIsLive(true);
+      } else {
+        setData([]);
+        setPoisonAnnotations([]);
+        setError('No OHLCV data available. Run data ingestion first.');
+        setIsLive(false);
       }
-    } catch {
-      // Fallback to mock
-      setData(OHLCV_DATA[ticker] || []);
-      setPoisonAnnotations(POISON_ANNOTATIONS[ticker] || []);
+    } catch (err: any) {
+      setData([]);
+      setPoisonAnnotations([]);
+      setError(err.message || 'Failed to fetch OHLCV data');
       setIsLive(false);
     } finally {
       setLoading(false);
@@ -33,5 +39,5 @@ export function useOHLCV(ticker: Ticker, days = 90) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { data, poisonAnnotations, loading, isLive, refresh };
+  return { data, poisonAnnotations, loading, error, isLive, refresh };
 }

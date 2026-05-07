@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useMetrics } from '../hooks/useMetrics';
-import { CYCLE_HISTORY } from '../data/mockData';
+
 import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback } from '../api/client';
 import type { PoisonType } from '../types';
 
@@ -64,7 +64,7 @@ export default function AdminPage() {
     }
   };
 
-  const displayHistory = metrics.history?.length > 0 ? metrics.history : CYCLE_HISTORY;
+  const displayHistory = metrics.history || [];
   const recentCycles = [...displayHistory].reverse().slice(0, 5);
 
   return (

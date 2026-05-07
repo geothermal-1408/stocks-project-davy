@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore, TICKERS } from '../store/appStore';
 import { usePoisonLog } from '../hooks/usePoisonLog';
-import { TICKERS } from '../data/mockData';
 import { injectPoison } from '../api/client';
 import { getPoisonColor } from '../hooks/useUtils';
 import type { PoisonType, PoisonEvent } from '../types';
