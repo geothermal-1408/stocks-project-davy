@@ -4,10 +4,9 @@ import { useAuthStore } from '../../store/authStore';
 interface Props {
   children: React.ReactNode;
   requireAdmin?: boolean;
-  requireUser?: boolean;
 }
 
-export default function ProtectedRoute({ children, requireAdmin = false, requireUser = false }: Props) {
+export default function ProtectedRoute({ children, requireAdmin = false }: Props) {
   const { isAuthenticated, isAdmin } = useAuthStore();
 
   if (!isAuthenticated) {
@@ -16,10 +15,6 @@ export default function ProtectedRoute({ children, requireAdmin = false, require
 
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/" replace />;
-  }
-
-  if (requireUser && isAdmin) {
-    return <Navigate to="/users" replace />;
   }
 
   return <>{children}</>;

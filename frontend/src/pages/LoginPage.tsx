@@ -74,10 +74,7 @@ export default function LoginPage() {
         await register(email, password, role);
       }
       setShowSuccess(true);
-      setTimeout(() => {
-        const { isAdmin } = useAuthStore.getState();
-        navigate(isAdmin ? '/users' : '/', { replace: true });
-      }, 600);
+      setTimeout(() => navigate('/', { replace: true }), 600);
     } catch (err: any) {
       // Try mock/demo mode when backend is offline
       if (err.message?.includes('fetch') || err.message?.includes('Failed')) {
@@ -102,10 +99,7 @@ export default function LoginPage() {
       error: null,
     });
     setShowSuccess(true);
-    setTimeout(() => {
-      const { isAdmin } = useAuthStore.getState();
-      navigate(isAdmin ? '/users' : '/', { replace: true });
-    }, 600);
+    setTimeout(() => navigate('/', { replace: true }), 600);
   };
 
   const displayError = localError || error;

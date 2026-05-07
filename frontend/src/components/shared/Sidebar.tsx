@@ -3,19 +3,20 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 
 const ALL_NAV_ITEMS = [
-  { to: '/', icon: BarChart2, label: 'Prediction', roles: ['user'] },
-  { to: '/portfolio', icon: Wallet, label: 'Portfolio', roles: ['user'] },
-  { to: '/dashboard', icon: Activity, label: 'Dashboard', roles: ['user'] },
-  { to: '/users', icon: Users, label: 'Activity', roles: ['admin'] },
-  { to: '/admin', icon: Settings, label: 'Admin', roles: ['admin'] },
-  { to: '/poison', icon: AlertTriangle, label: 'Poison Log', roles: ['admin'] },
+  { to: '/', icon: BarChart2, label: 'Prediction', adminOnly: false },
+  { to: '/portfolio', icon: Wallet, label: 'Portfolio', adminOnly: false },
+  { to: '/dashboard', icon: Activity, label: 'Dashboard', adminOnly: false },
+  { to: '/poison', icon: AlertTriangle, label: 'Poison Log', adminOnly: true },
+  { to: '/admin', icon: Settings, label: 'Admin', adminOnly: true },
+  { to: '/users', icon: Users, label: 'Users', adminOnly: true },
+  { to: '/investments', icon: DollarSign, label: 'Investments', adminOnly: true },
 ];
 
 export default function Sidebar() {
   const { isAdmin, user, logout } = useAuthStore();
   const navigate = useNavigate();
 
-  const navItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(isAdmin ? 'admin' : 'user'));
+  const navItems = ALL_NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
 
   const handleLogout = () => {
     logout();
