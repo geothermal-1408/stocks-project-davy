@@ -44,11 +44,9 @@
 
     → Dashboard:   http://localhost:3000
     → Prediction:  http://localhost:3000/
-    → Portfolio:   http://localhost:3000/portfolio
     → Metrics:     http://localhost:3000/dashboard
     → Poison Log:  http://localhost:3000/poison
     → Admin:       http://localhost:3000/admin
-    → Investments: http://localhost:3000/investments (admin)
 
   ┌─────────────────────────────────────────────────────┐
   │  HOW IT CONNECTS                                    │
@@ -94,12 +92,6 @@
   POST /admin/rollback        → Rollback to prior cycle (admin)
   POST /admin/inject-poison   → Test poison detector (admin)
   GET  /stream/events         → SSE real-time pipeline events
-
-  ── Investment Endpoints ──
-  POST /invest/buy            → Buy stock units with USD amount (user)
-  POST /invest/withdraw       → Withdraw active investment (user)
-  GET  /invest/portfolio      → User portfolio with live P&L (user)
-  GET  /admin/investments     → All user investments (admin, paginated)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ML PIPELINE (Standalone)
@@ -176,12 +168,12 @@
   ML Evaluation     4       PPL, MIA (Min-K%), MAE/RMSE
   ML Prediction     3       Singleton predictor + confidence bands
   ML Pipeline       3       CycleManager + IngestLoop + ModelRegistry
-  Backend API       8       /predict, /invest, /ingest, /poison, /metrics, /admin, /stream, /auth
-  Backend Services  7       Each router backed by ML pipeline wrapper + investment service
-  Backend DB        7       User, PredictionLog, PoisonEvent, CycleRecord, OHLCV, IngestJob, Investment
-  Frontend Pages    6       Prediction, Portfolio, Dashboard, PoisonLog, Admin, AdminInvestments
+  Backend API       7       /predict, /ingest, /poison, /metrics, /admin, /stream, /auth
+  Backend Services  6       Each router backed by ML pipeline wrapper
+  Backend DB        6       User, PredictionLog, PoisonEvent, CycleRecord, OHLCV, IngestJob
+  Frontend Pages    4       Prediction, Dashboard, PoisonLog, Admin
   Frontend Hooks    5       usePrediction, useOHLCV, useMetrics, usePoisonLog, usePipelineStream
-  Frontend API      1       client.ts → all backend endpoints (+ invest/buy, withdraw, portfolio)
+  Frontend API      1       client.ts → all backend endpoints
   Infrastructure    4       Docker Compose, Dockerfile, nginx, .env
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useMetrics } from '../hooks/useMetrics';
-
+import { CYCLE_HISTORY } from '../data/mockData';
 import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback } from '../api/client';
 import type { PoisonType } from '../types';
 
@@ -36,6 +36,7 @@ export default function AdminPage() {
       setFetchStatus('Ingest triggered successfully');
     } catch {
       setFetchStatus('Backend unavailable — simulated locally');
+      // Simulate progress for demo
       let prog = 0;
       const interval = setInterval(() => {
         prog += Math.floor(Math.random() * 5) + 1;
@@ -53,6 +54,7 @@ export default function AdminPage() {
       const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'akl', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
       await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent');
     } catch {
+      // Simulate progress for demo
       const interval = setInterval(() => {
         setUnlearnProgress(prev => {
           if (prev >= 100) { clearInterval(interval); setIsUnlearning(false); setPipelineState({ status: 'idle' }); return 100; }
@@ -62,7 +64,7 @@ export default function AdminPage() {
     }
   };
 
-  const displayHistory = metrics.history || [];
+  const displayHistory = metrics.history?.length > 0 ? metrics.history : CYCLE_HISTORY;
   const recentCycles = [...displayHistory].reverse().slice(0, 5);
 
   return (

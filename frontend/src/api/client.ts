@@ -123,33 +123,6 @@ export async function fetchUserActivity(page = 1, limit = 20, email?: string) {
   return request<any>(url);
 }
 
-// ── Investments ──
-export async function buyStock(ticker: string, amount: number) {
-  return request<any>('/invest/buy', {
-    method: 'POST',
-    body: JSON.stringify({ ticker, amount }),
-  });
-}
-
-export async function withdrawInvestment(investmentId: string) {
-  return request<any>('/invest/withdraw', {
-    method: 'POST',
-    body: JSON.stringify({ investment_id: investmentId }),
-  });
-}
-
-export async function fetchPortfolio() {
-  return request<any>('/invest/portfolio');
-}
-
-export async function fetchAdminInvestments(page = 1, limit = 20, email?: string, status?: string, ticker?: string) {
-  let url = `/admin/investments?page=${page}&limit=${limit}`;
-  if (email) url += `&email=${encodeURIComponent(email)}`;
-  if (status) url += `&status=${status}`;
-  if (ticker) url += `&ticker=${ticker}`;
-  return request<any>(url);
-}
-
 // ── Health ──
 export async function fetchHealth() {
   return request<any>('/health');

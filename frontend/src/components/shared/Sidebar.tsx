@@ -1,26 +1,20 @@
-import { BarChart2, Activity, AlertTriangle, Settings, Users, LogOut, Wallet, DollarSign } from 'lucide-react';
+import { BarChart2, Activity, AlertTriangle, Settings, Users, LogOut } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 
 const ALL_NAV_ITEMS = [
   { to: '/', icon: BarChart2, label: 'Prediction', adminOnly: false },
-  { to: '/portfolio', icon: Wallet, label: 'Portfolio', adminOnly: false, userOnly: true },
   { to: '/dashboard', icon: Activity, label: 'Dashboard', adminOnly: false },
   { to: '/poison', icon: AlertTriangle, label: 'Poison Log', adminOnly: true },
   { to: '/admin', icon: Settings, label: 'Admin', adminOnly: true },
   { to: '/users', icon: Users, label: 'Users', adminOnly: true },
-  { to: '/investments', icon: DollarSign, label: 'Investments', adminOnly: false, userOnly: true },
 ];
 
 export default function Sidebar() {
   const { isAdmin, user, logout } = useAuthStore();
   const navigate = useNavigate();
 
-  const navItems = ALL_NAV_ITEMS.filter(item => {
-    if (item.adminOnly && !isAdmin) return false;
-    if (item.userOnly && isAdmin) return false;
-    return true;
-  });
+  const navItems = ALL_NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
 
   const handleLogout = () => {
     logout();

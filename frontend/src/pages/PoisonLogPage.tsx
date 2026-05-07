@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { usePoisonLog } from '../hooks/usePoisonLog';
-
+import { TICKERS } from '../data/mockData';
 import { injectPoison } from '../api/client';
 import { getPoisonColor } from '../hooks/useUtils';
 import type { PoisonType, PoisonEvent } from '../types';
@@ -11,8 +11,6 @@ const POISON_TYPES: PoisonType[] = [
   'price_outlier', 'flash_crash', 'volume_spike',
   'negative_price', 'ohlc_violation', 'stale_data', 'regime_change'
 ];
-
-const TICKERS = ['AAPL', 'MSFT', 'GOOG', 'NVDA'] as const;
 
 export default function PoisonLogPage() {
   const { expandedPoisonRows, togglePoisonRow } = useAppStore();

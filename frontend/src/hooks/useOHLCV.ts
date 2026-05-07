@@ -4,10 +4,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { OHLCV, PoisonAnnotation } from '../types';
 import { fetchOHLCV } from '../api/client';
+import { OHLCV_DATA, POISON_ANNOTATIONS, type Ticker } from '../data/mockData';
 
-export function useOHLCV(ticker: string, days = 90) {
-  const [data, setData] = useState<OHLCV[]>([]);
-  const [poisonAnnotations, setPoisonAnnotations] = useState<PoisonAnnotation[]>([]);
+export function useOHLCV(ticker: Ticker, days = 90) {
+  const [data, setData] = useState<OHLCV[]>(OHLCV_DATA[ticker] || []);
+  const [poisonAnnotations, setPoisonAnnotations] = useState<PoisonAnnotation[]>(POISON_ANNOTATIONS[ticker] || []);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
 
@@ -19,14 +20,11 @@ export function useOHLCV(ticker: string, days = 90) {
         setData(resp.data);
         setPoisonAnnotations(resp.poison_annotations || []);
         setIsLive(true);
-      } else {
-        setData([]);
-        setPoisonAnnotations([]);
-        setIsLive(false);
       }
     } catch {
-      setData([]);
-      setPoisonAnnotations([]);
+      // Fallback to mock
+      setData(OHLCV_DATA[ticker] || []);
+      setPoisonAnnotations(POISON_ANNOTATIONS[ticker] || []);
       setIsLive(false);
     } finally {
       setLoading(false);
