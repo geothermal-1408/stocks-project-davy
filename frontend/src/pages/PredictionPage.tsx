@@ -7,8 +7,21 @@ import TickerSelector from '../components/prediction/TickerSelector';
 
 export default function PredictionPage() {
   const { selectedTicker } = useAppStore();
-  const { data, poisonAnnotations, isLive: isDataLive } = useOHLCV(selectedTicker);
-  const { prediction, isLive: isPredLive } = usePrediction(selectedTicker);
+  const { data, poisonAnnotations, isLive: isDataLive, loading: dataLoading, error: dataError } = useOHLCV(selectedTicker);
+  const { prediction, isLive: isPredLive, loading: predLoading, error: predError } = usePrediction(selectedTicker);
+  
+  if (dataLoading || predLoading) {
+    return <div className="h-full flex items-center justify-center font-mono text-sm text-text-muted">LOADING FORECAST...</div>;
+  }
+
+  if (dataError || predError) {
+    return <div className="h-full flex items-center justify-center font-mono text-sm text-accent-danger">{dataError || predError}</div>;
+  }
+
+  if (!data || data.length === 0 || !prediction) {
+    return <div className="h-full flex items-center justify-center font-mono text-sm text-text-muted">NO DATA AVAILABLE</div>;
+  }
+
   const lastCandle = data[data.length - 1];
 
   return (
