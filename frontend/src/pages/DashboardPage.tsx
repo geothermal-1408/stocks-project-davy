@@ -5,15 +5,13 @@ import BufferGauge from '../components/dashboard/BufferGauge';
 import PipelineStatus from '../components/dashboard/PipelineStatus';
 import { PPLChart, MAEChart } from '../components/dashboard/Charts';
 import CycleTable from '../components/dashboard/CycleTable';
-import { CYCLE_HISTORY } from '../data/mockData';
 
 export default function DashboardPage() {
   const { pipelineState } = useAppStore();
   const { metrics, isLive } = useMetrics();
   const { latest, history, buffer_status } = metrics;
 
-  // Use real history from API if available, otherwise mock
-  const displayHistory = history?.length > 0 ? history : CYCLE_HISTORY;
+  const displayHistory = history || [];
 
   // Build sparkline data from history
   const forgetPplSpark = displayHistory.map(h => h.forget_ppl);

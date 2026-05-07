@@ -1,12 +1,22 @@
 import { create } from 'zustand';
 import type { PipelineState, AppConfig } from '../types';
-import type { Ticker } from '../data/mockData';
-import { DEFAULT_CONFIG } from '../data/mockData';
+//import type { Ticker } from '../data/mockData';
+
+export type Ticker = 'AAPL' | 'MSFT' | 'GOOG' | 'NVDA';
+
+const DEFAULT_CONFIG: AppConfig = {
+  sigma_thresh: 3.0,
+  swing_thresh: 0.10,
+  vol_multiplier: 5.0,
+  forget_trigger: 5,
+  min_retain: 50,
+  learning_rate: '5e-6',
+};
 
 interface AppStore {
   // Ticker selection
-  selectedTicker: Ticker;
-  setSelectedTicker: (ticker: Ticker) => void;
+  selectedTicker: string;
+  setSelectedTicker: (ticker: string) => void;
 
   // Pipeline status
   pipelineState: PipelineState;

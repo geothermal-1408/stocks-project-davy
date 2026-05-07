@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
-import { TICKERS } from '../../data/mockData';
+
+const TICKERS = ['AAPL', 'MSFT', 'GOOG', 'NVDA'] as const;
 
 export default function TickerSelector() {
   const { selectedTicker, setSelectedTicker } = useAppStore();

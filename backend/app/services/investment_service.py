@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 async def get_current_prediction_price(ticker: str = "AAPL") -> float:
     """Get current predicted close price for a ticker.
 
-    Falls back to mock price if ML model not available.
+    Returns 0.0 if ML model is not available or fails.
     """
     try:
         from app.services.prediction_service import predict
@@ -34,14 +34,7 @@ async def get_current_prediction_price(ticker: str = "AAPL") -> float:
     except Exception as e:
         logger.warning(f"Could not get prediction price: {e}")
 
-    # Fallback: use a reasonable AAPL mock price
-    FALLBACK_PRICES = {
-        "AAPL": 192.53,
-        "MSFT": 420.15,
-        "GOOG": 178.40,
-        "NVDA": 890.00,
-    }
-    return FALLBACK_PRICES.get(ticker, 100.0)
+    return 0.0
 
 
 async def invest(
