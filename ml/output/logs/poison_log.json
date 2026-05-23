@@ -978,5 +978,12 @@
     "window_start": "2025-10-21",
     "window_end": "2025-12-02",
     "timestamp": "2026-04-24T03:27:12.075904"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-23T15:06:37.190655"
   }
 ]
