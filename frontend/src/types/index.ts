@@ -128,3 +128,46 @@ export interface AppConfig {
   min_retain: number;
   learning_rate: string;
 }
+
+// ── Portfolio types ─────────────────────────────────────────────────────
+
+export interface Holding {
+  ticker: string;
+  units_held: number;
+  avg_buy_price: number;
+  total_invested: number;
+  current_price: number;
+  current_value: number;
+  predicted_value: number;
+  unrealised_pnl: number;
+  unrealised_pnl_pct: number;
+  created_at: string;
+}
+
+export interface InvestmentTransaction {
+  id: string;
+  user_email: string;
+  ticker: string;
+  action: 'buy' | 'sell' | 'withdraw';
+  amount_inr: number;
+  units: number;
+  price_at_time: number;
+  created_at: string;
+}
+
+export interface PortfolioPnLPoint {
+  date: string;
+  portfolio_value: number;
+  total_invested: number;
+  pnl: number;
+}
+
+export interface PortfolioSummary {
+  total_invested: number;
+  current_value: number;
+  predicted_value: number;
+  total_unrealised_pnl: number;
+  total_unrealised_pnl_pct: number;
+  holdings: Holding[];
+}
+
