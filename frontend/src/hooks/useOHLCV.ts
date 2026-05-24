@@ -1,15 +1,14 @@
 /**
- * useOHLCV — fetches OHLCV data from backend, falls back to mock.
+ * useOHLCV — fetches OHLCV data from backend (yfinance source).
+ * No mock/synthetic fallback — shows empty state when backend is unavailable.
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { OHLCV, PoisonAnnotation } from '../types';
 import { fetchOHLCV } from '../api/client';
-import { OHLCV_DATA, POISON_ANNOTATIONS, type Ticker } from '../data/mockData';
 
 export function useOHLCV(ticker: string, days = 90) {
-  const t = ticker as Ticker;
-  const [data, setData] = useState<OHLCV[]>(OHLCV_DATA[t] || []);
-  const [poisonAnnotations, setPoisonAnnotations] = useState<PoisonAnnotation[]>(POISON_ANNOTATIONS[t] || []);
+  const [data, setData] = useState<OHLCV[]>([]);
+  const [poisonAnnotations, setPoisonAnnotations] = useState<PoisonAnnotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
 
@@ -21,11 +20,15 @@ export function useOHLCV(ticker: string, days = 90) {
         setData(resp.data);
         setPoisonAnnotations(resp.poison_annotations || []);
         setIsLive(true);
+      } else {
+        setData([]);
+        setPoisonAnnotations([]);
+        setIsLive(false);
       }
     } catch {
-      // Fallback to mock
-      setData(OHLCV_DATA[t] || []);
-      setPoisonAnnotations(POISON_ANNOTATIONS[t] || []);
+      // Backend unavailable — no mock fallback
+      setData([]);
+      setPoisonAnnotations([]);
       setIsLive(false);
     } finally {
       setLoading(false);

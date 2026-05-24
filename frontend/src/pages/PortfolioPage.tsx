@@ -12,16 +12,27 @@ export default function PortfolioPage() {
   const [withdrawTicker, setWithdrawTicker] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState<string | null>(null);
+
   const loadData = useCallback(async () => {
+    setError(null);
     try {
       const [p, txs] = await Promise.all([
-        fetchPortfolio(),
-        fetchTransactionHistory(),
+        fetchPortfolio().catch(() => ({
+          total_invested: 0,
+          current_value: 0,
+          predicted_value: 0,
+          total_unrealised_pnl: 0,
+          total_unrealised_pnl_pct: 0,
+          holdings: [],
+        })),
+        fetchTransactionHistory().catch(() => []),
       ]);
       setPortfolio(p);
       setTransactions(Array.isArray(txs) ? txs : []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load portfolio:', err);
+      setError(err?.message || 'Failed to load portfolio');
     } finally {
       setLoading(false);
     }
@@ -45,6 +56,13 @@ export default function PortfolioPage() {
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-4">
+      {/* Error banner */}
+      {error && (
+        <div className="p-3 border border-accent-danger/30 bg-accent-danger/5 font-mono text-xs text-accent-danger">
+          ⚠ {error}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="font-barlow text-lg tracking-widest text-text-primary uppercase">

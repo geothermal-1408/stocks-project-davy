@@ -19,15 +19,13 @@ ml/stocksense/utils/__pycache__/
 ml/stocksense/venv/
 ml/stocksense/prediction/__pycache__/
 ml/stocksense/pipeline/__pycache__/
-ml/stocksense/method/__pycache__/
-ml/stocksense/training/__pycache__/
 backend/stocksense.db
 .env
 st.md
 stock.md
 /nginx/nginx.conf
 explain.md
+docs/Qwen.md
+fix.md
 PROJECT_DOCS.md
 stocks.md
-docs/Qwen.md
-ml/models/Qwen1.5-0.5B

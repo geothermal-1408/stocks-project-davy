@@ -34,14 +34,8 @@ export default function AdminPage() {
       await triggerIngest(fetchTicker);
       setFetchStatus('Ingest triggered successfully');
     } catch {
-      setFetchStatus('Backend unavailable — simulated locally');
-      // Simulate progress for demo
-      let prog = 0;
-      const interval = setInterval(() => {
-        prog += Math.floor(Math.random() * 5) + 1;
-        if (prog >= 30) { clearInterval(interval); setPipelineState({ status: 'idle' }); }
-        else { setPipelineState({ status: 'ingesting', ticker: fetchTicker, progress: prog, total: 30 }); }
-      }, 500);
+      setFetchStatus('Backend unavailable — please start the server');
+      setPipelineState({ status: 'idle' });
     }
   };
 
@@ -53,13 +47,8 @@ export default function AdminPage() {
       const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'akl', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
       await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent');
     } catch {
-      // Simulate progress for demo
-      const interval = setInterval(() => {
-        setUnlearnProgress(prev => {
-          if (prev >= 100) { clearInterval(interval); setIsUnlearning(false); setPipelineState({ status: 'idle' }); return 100; }
-          return prev + Math.floor(Math.random() * 15) + 5;
-        });
-      }, 600);
+      setIsUnlearning(false);
+      setPipelineState({ status: 'idle' });
     }
   };
 
@@ -195,21 +184,57 @@ export default function AdminPage() {
               </div>
             </div>
             {injectResult && (
-              <div className="p-1.5 border border-accent-mint/30 bg-accent-mint/5 font-mono text-[9px] text-accent-mint">
-                {injectResult}
+              <div className={`p-2 border font-mono text-[10px] space-y-1 ${
+                injectResult.includes('✓') ? 'border-accent-mint/30 bg-accent-mint/5 text-accent-mint'
+                : injectResult.includes('✗') ? 'border-accent-danger/30 bg-accent-danger/5 text-accent-danger'
+                : 'border-accent-warning/30 bg-accent-warning/5 text-accent-warning'
+              }`}>
+                <div>{injectResult}</div>
               </div>
             )}
             <button
               onClick={async () => {
+                setInjectResult(null);
                 try {
                   const result = await injectPoison(injectTicker, injectType, new Date().toISOString().split('T')[0]);
-                  setInjectResult(result.detected ? '✓ Detected' : '✗ Missed');
-                } catch { setInjectResult('Backend offline — simulated'); }
+                  if (result.error) {
+                    setInjectResult(`⚠ ${result.error}`);
+                  } else if (result.detected) {
+                    setInjectResult(`✓ Detected — ${injectType.replace(/_/g, ' ')} on ${injectTicker}\n→ Routed to forget_buffer.jsonl\n→ Will trigger unlearn at threshold`);
+                  } else {
+                    setInjectResult(`✗ Not detected — ${injectType.replace(/_/g, ' ')} evaded the 7-signal screener`);
+                  }
+                } catch (e: any) {
+                  setInjectResult(`⚠ ${e?.message || 'Backend offline — injection failed'}`);
+                }
               }}
               className="w-full py-1.5 border border-accent-warning text-accent-warning font-mono text-xs hover:bg-accent-warning/10 transition-colors"
             >
               INJECT
             </button>
+
+            {/* Latest unlearn cycle metrics */}
+            {metrics.latest && (metrics.latest.forget_ppl !== null || metrics.latest.retain_ppl !== null) && (
+              <div className="mt-2 p-2 border border-border bg-bg-panel">
+                <div className="font-mono text-[9px] text-text-muted uppercase mb-1">
+                  LATEST UNLEARN METRICS (Cycle {metrics.current_cycle || '—'})
+                </div>
+                <div className="grid grid-cols-3 gap-2 font-mono text-[10px]">
+                  <div>
+                    <span className="text-text-muted">Forget PPL: </span>
+                    <span className="text-accent-mint">{metrics.latest.forget_ppl?.toFixed(2) ?? '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted">Retain PPL: </span>
+                    <span className="text-text-primary">{metrics.latest.retain_ppl?.toFixed(2) ?? '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted">MAE: </span>
+                    <span className="text-text-primary">{metrics.latest.mae_validation?.toFixed(4) ?? '—'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -343,7 +368,7 @@ export default function AdminPage() {
                   try {
                     await triggerRollback(cycle.cycle_num);
                     setRollbackStatus(`Rolled back to cycle ${cycle.cycle_num}`);
-                  } catch { setRollbackStatus('Backend offline — rollback simulated'); }
+                  } catch { setRollbackStatus('Backend offline — rollback failed'); }
                 }}
                 className={`px-3 py-1 border font-mono text-[10px] transition-colors ${
                   cycle.cycle_num === (metrics.current_cycle || 7)

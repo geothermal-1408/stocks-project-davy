@@ -19,27 +19,7 @@ interface ActivityRecord {
   created_at: string | null;
 }
 
-// Mock data for demo/offline mode
-const MOCK_USERS: UserRecord[] = [
-  { email: 'admin@stocksense.io', role: 'admin', created_at: '2024-10-01T08:00:00Z', activity_count: 142, last_activity: '2024-11-15T16:42:00Z', last_action: 'view_page' },
-  { email: 'trader1@example.com', role: 'user', created_at: '2024-10-05T10:30:00Z', activity_count: 87, last_activity: '2024-11-15T15:20:00Z', last_action: 'predict' },
-  { email: 'analyst@corp.io', role: 'user', created_at: '2024-10-12T14:15:00Z', activity_count: 56, last_activity: '2024-11-15T14:55:00Z', last_action: 'view_page' },
-  { email: 'ops@stocksense.io', role: 'admin', created_at: '2024-10-15T09:00:00Z', activity_count: 203, last_activity: '2024-11-15T16:38:00Z', last_action: 'trigger_unlearn' },
-  { email: 'intern@example.com', role: 'user', created_at: '2024-11-01T11:00:00Z', activity_count: 12, last_activity: '2024-11-14T09:10:00Z', last_action: 'login' },
-];
-
-const MOCK_ACTIVITY: ActivityRecord[] = [
-  { id: 'a1', user_email: 'ops@stocksense.io', action: 'trigger_unlearn', details: 'method=AD, cycle=8', created_at: '2024-11-15T16:38:00Z' },
-  { id: 'a2', user_email: 'admin@stocksense.io', action: 'view_page', details: 'page=/admin', created_at: '2024-11-15T16:42:00Z' },
-  { id: 'a3', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=AAPL, samples=10', created_at: '2024-11-15T15:20:00Z' },
-  { id: 'a4', user_email: 'analyst@corp.io', action: 'view_page', details: 'page=/dashboard', created_at: '2024-11-15T14:55:00Z' },
-  { id: 'a5', user_email: 'ops@stocksense.io', action: 'inject_poison', details: 'ticker=AAPL, type=flash_crash', created_at: '2024-11-15T14:30:00Z' },
-  { id: 'a6', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=AAPL, samples=10', created_at: '2024-11-15T13:45:00Z' },
-  { id: 'a7', user_email: 'admin@stocksense.io', action: 'view_page', details: 'page=/poison', created_at: '2024-11-15T13:20:00Z' },
-  { id: 'a8', user_email: 'intern@example.com', action: 'login', details: null, created_at: '2024-11-14T09:10:00Z' },
-  { id: 'a9', user_email: 'ops@stocksense.io', action: 'trigger_ingest', details: 'ticker=AAPL', created_at: '2024-11-14T17:02:00Z' },
-  { id: 'a10', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=AAPL, samples=10', created_at: '2024-11-14T16:30:00Z' },
-];
+// No mock data — all data comes from the backend
 
 const ACTION_COLORS: Record<string, string> = {
   login: 'text-accent-mint',
@@ -84,8 +64,8 @@ function formatDate(iso: string | null): string {
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserRecord[]>(MOCK_USERS);
-  const [activity, setActivity] = useState<ActivityRecord[]>(MOCK_ACTIVITY);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [activity, setActivity] = useState<ActivityRecord[]>([]);
   const [isLive, setIsLive] = useState(false);
   const [usersExpanded, setUsersExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(true);
@@ -103,13 +83,8 @@ export default function UsersPage() {
       setActivity(activityRes.activities);
       setIsLive(true);
     } catch {
-      // Stay with mock data
+      // Backend unavailable — show empty state, no mock fallback
       setIsLive(false);
-      if (selectedEmail) {
-        setActivity(MOCK_ACTIVITY.filter(a => a.user_email === selectedEmail));
-      } else {
-        setActivity(MOCK_ACTIVITY);
-      }
     }
     setRefreshing(false);
   };
