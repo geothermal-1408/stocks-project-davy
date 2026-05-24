@@ -5,10 +5,25 @@ import CandlestickChart from '../components/prediction/CandlestickChart';
 import PredictionPanel from '../components/prediction/PredictionPanel';
 import TickerSelector from '../components/prediction/TickerSelector';
 
+const EMPTY_PREDICTION = {
+  ticker: '',
+  pred_date: '',
+  prediction: { open: 0, high: 0, low: 0, close: 0, vol: 0 },
+  confidence: { close_high: 0, close_low: 0 },
+  directional: 'up' as const,
+  directional_pct: 0,
+  model_cycle: -1,
+  method: '',
+  mae: 0,
+  samples: 0,
+  generated_at: '',
+};
+
 export default function PredictionPage() {
   const { selectedTicker } = useAppStore();
   const { data, poisonAnnotations, isLive: isDataLive } = useOHLCV(selectedTicker);
-  const { prediction, isLive: isPredLive } = usePrediction(selectedTicker);
+  const { prediction: rawPrediction, isLive: isPredLive } = usePrediction(selectedTicker);
+  const prediction = rawPrediction ?? EMPTY_PREDICTION;
   const lastCandle = data[data.length - 1];
 
   return (
@@ -68,3 +83,4 @@ export default function PredictionPage() {
     </div>
   );
 }
+
