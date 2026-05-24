@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const retainPplSpark = (history || []).map(h => h.retain_ppl);
   const maeSpark = (history || []).map(h => h.mae_validation);
   const dirAccSpark = (history || []).map(h => ((h.directional_acc || 0) * 100));
-  const miaSpark = (history || []).map(h => h.mia_auc)
+  const miaSpark = (history || []).map(h => h.mia_auc);
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4">
@@ -56,11 +56,11 @@ export default function DashboardPage() {
         />
         <MetricCard
           label="DIR ACC"
-          value={(latest?.directional_acc != null ? (latest.directional_acc) * 100) : null}
-        unit="%"
-        sparklineData={dirAccSpark}
-        trendDirection="up"
-        status={(latest.directional_acc != null && latest.directional_acc >= 0.52 ? 'healthy' : 'danger'}
+          value={latest?.directional_acc != null ? (latest.directional_acc * 100) : null}
+          unit="%"
+          sparklineData={dirAccSpark}
+          trendDirection="up"
+          status={latest?.directional_acc != null && latest.directional_acc >= 0.52 ? 'healthy' : 'danger'}
         />
         <MetricCard
           label="MIA AUC"

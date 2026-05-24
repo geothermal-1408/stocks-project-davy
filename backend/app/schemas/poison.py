@@ -25,7 +25,8 @@ class PoisonLogResponse(BaseModel):
     total: int
     events: List[PoisonEventSchema]
 
-#Only AAPL is supported this sprint
+
+# Only AAPL is supported this sprint
 VALID_POISON_TICKERS = {"AAPL"}
 
 
@@ -34,7 +35,7 @@ class InjectPoisonRequest(BaseModel):
     inject_type: str  # flash_crash, volume_spike, etc.
     target_date: str
 
- @field_validator("ticker")
+    @field_validator("ticker")
     @classmethod
     def validate_ticker(cls, v: str) -> str:
         if v not in VALID_POISON_TICKERS:

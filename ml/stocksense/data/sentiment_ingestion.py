@@ -116,7 +116,7 @@ def _get_praw_client():
     """
     client_id = os.environ.get("REDDIT_CLIENT_ID", "")
     client_secret = os.environ.get("REDDIT_CLIENT_SECRET", "")
-    user_agent = os.environ.get("REDDIT_USER_AGENT", "stocksense-v2/1.0")
+    user_agent = os.environ.get("REDDIT_USER_AGENT", "stocksense-v1/1.0")
 
     if not client_id or client_id == "your_reddit_client_id":
         logger.warning("REDDIT_CLIENT_ID not configured — skipping Reddit fetch")
