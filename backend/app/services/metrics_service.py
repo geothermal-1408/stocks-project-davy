@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 async def get_metrics(db: AsyncSession) -> dict:
-     """Get current metrics, cycle history, and buffer status.
+    """Get current metrics, cycle history, and buffer status.
     Falls back to reading ml/output/logs/cycle_history.json when the DB
     has no cycle records (e.g. cycles run via CLI).  Returns None for
     metric values when no cycle has ever been run so the frontend can

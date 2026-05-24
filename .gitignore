@@ -29,3 +29,6 @@ docs/Qwen.md
 fix.md
 PROJECT_DOCS.md
 stocks.md
+ml/models/Qwen1.5-0.5B
+ml/stocksense/method/__pycache__/
+ml/stocksense/training/__pycache__/
