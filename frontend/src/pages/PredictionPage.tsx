@@ -1,29 +1,15 @@
 import { useAppStore } from '../store/appStore';
 import { useOHLCV } from '../hooks/useOHLCV';
 import { usePrediction } from '../hooks/usePrediction';
+import { getNextBusinessDay } from '../utils/dateUtils';
 import CandlestickChart from '../components/prediction/CandlestickChart';
 import PredictionPanel from '../components/prediction/PredictionPanel';
 import TickerSelector from '../components/prediction/TickerSelector';
 
-const EMPTY_PREDICTION = {
-  ticker: '',
-  pred_date: '',
-  prediction: { open: 0, high: 0, low: 0, close: 0, vol: 0 },
-  confidence: { close_high: 0, close_low: 0 },
-  directional: 'up' as const,
-  directional_pct: 0,
-  model_cycle: -1,
-  method: '',
-  mae: 0,
-  samples: 0,
-  generated_at: '',
-};
-
 export default function PredictionPage() {
   const { selectedTicker } = useAppStore();
   const { data, poisonAnnotations, isLive: isDataLive } = useOHLCV(selectedTicker);
-  const { prediction: rawPrediction, isLive: isPredLive } = usePrediction(selectedTicker);
-  const prediction = rawPrediction ?? EMPTY_PREDICTION;
+  const { prediction, isLive: isPredLive } = usePrediction(selectedTicker);
   const lastCandle = data[data.length - 1];
 
   return (
@@ -41,11 +27,10 @@ export default function PredictionPage() {
             </span>
           )}
         </div>
-        <div className={`flex items-center gap-2 px-3 py-1 border font-mono text-sm ${
-          prediction.directional === 'up'
+        <div className={`flex items-center gap-2 px-3 py-1 border font-mono text-sm ${prediction.directional === 'up'
             ? 'border-accent-mint text-accent-mint'
             : 'border-accent-danger text-accent-danger'
-        }`}>
+          }`}>
           <span>{prediction.directional === 'up' ? '↑' : '↓'}</span>
           <span className="font-bold">{prediction.directional === 'up' ? 'BULL' : 'BEAR'}</span>
           <span>{prediction.directional_pct}%</span>
@@ -65,7 +50,7 @@ export default function PredictionPage() {
                 high: prediction.prediction.high,
                 low: prediction.prediction.low,
                 close: prediction.prediction.close,
-                date: prediction.pred_date,
+                date: getNextBusinessDay(lastCandle?.date),
               }}
               confidenceBand={{
                 high: prediction.confidence.close_high,
@@ -83,4 +68,3 @@ export default function PredictionPage() {
     </div>
   );
 }
-

@@ -6,8 +6,9 @@ import type { Prediction } from '../types';
 import { fetchPrediction } from '../api/client';
 import { PREDICTIONS, type Ticker } from '../data/mockData';
 
-export function usePrediction(ticker: Ticker) {
-  const [prediction, setPrediction] = useState<Prediction>(PREDICTIONS[ticker]);
+export function usePrediction(ticker: string) {
+  const t = ticker as Ticker;
+  const [prediction, setPrediction] = useState<Prediction>(PREDICTIONS[t]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
@@ -20,19 +21,18 @@ export function usePrediction(ticker: Ticker) {
       if (data && !data.error) {
         // Map backend response to Prediction type
         setPrediction({
-          ...PREDICTIONS[ticker],
+          ...PREDICTIONS[t],
           ...data,
           directional_pct: data.directional === 'up' ? 65 : 35,
           method: 'AD',
-          mae: data.prediction?.close ? Math.abs(data.prediction.close - (PREDICTIONS[ticker]?.prediction?.close || 0)) : 1.82,
-          samples: 10,
+          mae: data.prediction?.close ? Math.abs(data.prediction.close - (PREDICTIONS[t]?.prediction?.close || 0)) : 1.82, samples: 10,
           generated_at: new Date().toISOString(),
         });
         setIsLive(true);
       }
     } catch {
       // Fallback to mock data silently
-      setPrediction(PREDICTIONS[ticker]);
+      setPrediction(PREDICTIONS[t]);
       setIsLive(false);
     } finally {
       setLoading(false);

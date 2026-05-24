@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PoisonEventSchema(BaseModel):
@@ -25,11 +25,23 @@ class PoisonLogResponse(BaseModel):
     total: int
     events: List[PoisonEventSchema]
 
+#Only AAPL is supported this sprint
+VALID_POISON_TICKERS = {"AAPL"}
+
 
 class InjectPoisonRequest(BaseModel):
     ticker: str = "AAPL"
     inject_type: str  # flash_crash, volume_spike, etc.
     target_date: str
+
+ @field_validator("ticker")
+    @classmethod
+    def validate_ticker(cls, v: str) -> str:
+        if v not in VALID_POISON_TICKERS:
+            raise ValueError(
+                f"Only {', '.join(VALID_POISON_TICKERS)} supported for poison injection"
+            )
+        return v
 
 
 class InjectPoisonResponse(BaseModel):
