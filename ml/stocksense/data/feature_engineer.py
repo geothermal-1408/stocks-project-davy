@@ -2,7 +2,7 @@
 feature_engineer.py — Technical indicator + sentiment feature computation.
 
 Model-agnostic: produces enriched text (for Qwen reasoning) AND numeric
-arrays (for LSTM/Transformer forecasting).
+arrays (for LSTM forecasting).
 """
 
 import logging
@@ -18,7 +18,7 @@ class FeatureEngineer:
     """Computes per-window technical indicators and sentiment features.
 
     Indicators: RSI(14), MACD(12-26-9), Bollinger Band position, 5/20-day momentum.
-    Sentiment: news_sentiment [-1,1], reddit_sentiment [-1,1].
+    Sentiment: news_sentiment [-1,1] from NewsAPI.
     """
 
     def __init__(self, rsi_period=14, macd_fast=12, macd_slow=26,
@@ -90,25 +90,69 @@ class FeatureEngineer:
             "momentum_20d": self.compute_momentum(closes, 20),
         }
 
+    def add_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add per-row technical indicators to an OHLCV DataFrame.
+
+        This is used by the LSTM trainer to prepare features for the full
+        dataset, computing rolling indicators for each row.
+
+        Args:
+            df: DataFrame with at least [date, open, high, low, close, vol].
+
+        Returns:
+            DataFrame with added columns: rsi, macd, bb_pos, news_sentiment.
+        """
+        df = df.copy()
+        closes = df["close"].astype(float)
+
+        # RSI
+        deltas = closes.diff()
+        gains = deltas.where(deltas > 0, 0.0)
+        losses = (-deltas.where(deltas < 0, 0.0))
+        avg_gain = gains.rolling(self.rsi_period, min_periods=1).mean()
+        avg_loss = losses.rolling(self.rsi_period, min_periods=1).mean()
+        rs = avg_gain / avg_loss.replace(0, np.inf)
+        df["rsi"] = (100.0 - (100.0 / (1.0 + rs))).fillna(50.0)
+
+        # MACD
+        ema_fast = closes.ewm(span=self.macd_fast, adjust=False).mean()
+        ema_slow = closes.ewm(span=self.macd_slow, adjust=False).mean()
+        macd_line = ema_fast - ema_slow
+        signal = macd_line.ewm(span=self.macd_signal, adjust=False).mean()
+        df["macd"] = (macd_line - signal).fillna(0.0)
+
+        # Bollinger Band position
+        sma = closes.rolling(self.bb_period, min_periods=1).mean()
+        std = closes.rolling(self.bb_period, min_periods=1).std().fillna(0)
+        upper = sma + self.bb_std * std
+        lower = sma - self.bb_std * std
+        band_width = (upper - lower).replace(0, 1)
+        df["bb_pos"] = ((closes - lower) / band_width).clip(0, 1).fillna(0.5)
+
+        # News sentiment (default to 0 if not available — filled by ingest)
+        if "news_sentiment" not in df.columns:
+            df["news_sentiment"] = 0.0
+
+        return df
+
     def enrich_window_text(self, base_window_text: str, window_df: pd.DataFrame,
-                           news_sentiment: float = 0.0, reddit_sentiment: float = 0.0) -> str:
+                           news_sentiment: float = 0.0) -> str:
         """Append indicators and sentiment to window text string."""
         ind = self.compute_indicators(window_df)
         feature_str = (
             f"rsi={ind['rsi']} macd={ind['macd']} bb_pos={ind['bb_pos']} "
             f"momentum_5d={ind['momentum_5d']} momentum_20d={ind['momentum_20d']} "
-            f"news_sentiment={round(news_sentiment, 4)} "
-            f"reddit_sentiment={round(reddit_sentiment, 4)}"
+            f"news_sentiment={round(news_sentiment, 4)}"
         )
         return f"{base_window_text} | {feature_str}"
 
     def extract_features_array(self, window_df: pd.DataFrame,
-                               news_sentiment: float = 0.0,
-                               reddit_sentiment: float = 0.0) -> np.ndarray:
-        """Extract features as numeric array for LSTM/Transformer models."""
+                               news_sentiment: float = 0.0) -> np.ndarray:
+        """Extract features as numeric array for LSTM models."""
         ind = self.compute_indicators(window_df)
         return np.array([
             ind["rsi"], ind["macd"], ind["bb_pos"],
             ind["momentum_5d"], ind["momentum_20d"],
-            news_sentiment, reddit_sentiment,
+            news_sentiment,
         ], dtype=np.float32)
+

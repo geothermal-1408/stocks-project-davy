@@ -7,9 +7,17 @@ interface Props {
   lastCandle: OHLCV;
 }
 
+/** Safely convert a value to a finite number, defaulting to 0 */
+function safeNum(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function MetricRow({ label, value, delta }: { label: string; value: number; delta: number }) {
-  const animated = useCountUp(value, 600, 2);
-  const isPositive = delta >= 0;
+  const safeValue = safeNum(value);
+  const safeDelta = safeNum(delta);
+  const animated = useCountUp(safeValue, 600, 2);
+  const isPositive = safeDelta >= 0;
 
   return (
     <div className="flex items-center justify-between py-2 border-b border-border">
@@ -17,7 +25,7 @@ function MetricRow({ label, value, delta }: { label: string; value: number; delt
       <div className="flex items-center gap-3">
         <span className="font-mono text-lg text-text-primary">{animated}</span>
         <span className={`font-mono text-xs ${isPositive ? 'text-accent-mint' : 'text-accent-danger'}`}>
-          {isPositive ? '+' : ''}{delta.toFixed(2)}
+          {isPositive ? '+' : ''}{safeDelta.toFixed(2)}
         </span>
       </div>
     </div>

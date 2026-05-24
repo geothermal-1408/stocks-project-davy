@@ -24,7 +24,7 @@ export function usePrediction(ticker: string) {
           prediction: data.prediction || { open: 0, high: 0, low: 0, close: 0, vol: 0 },
           confidence: data.confidence || { close_high: 0, close_low: 0 },
           directional: data.directional || 'up',
-          directional_pct: data.directional === 'up' ? 65 : 35,
+          directional_pct: data.directional_pct || 50,
           model_cycle: data.model_cycle || 0,
           method: data.method || 'AD',
           mae: data.mae || 0,

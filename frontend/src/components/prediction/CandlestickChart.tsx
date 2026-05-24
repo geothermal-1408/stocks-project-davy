@@ -50,6 +50,9 @@ export default function CandlestickChart({ data, poisonAnnotations, predictionCa
   }, [data, predictionCandle]);
 
   const { minPrice, maxPrice, maxVol } = useMemo(() => {
+    if (data.length === 0) {
+      return { minPrice: 0, maxPrice: 1, maxVol: 1 };
+    }
     let min = Infinity, max = -Infinity, mVol = 0;
     for (const d of data) {
       if (d.low < min) min = d.low;
@@ -64,27 +67,32 @@ export default function CandlestickChart({ data, poisonAnnotations, predictionCa
       if (predictionCandle.low < min) min = predictionCandle.low;
       if (predictionCandle.high > max) max = predictionCandle.high;
     }
-    const range = max - min;
-    return { minPrice: min - range * 0.05, maxPrice: max + range * 0.05, maxVol: mVol };
+    const range = max - min || 1; // Prevent zero range
+    return { minPrice: min - range * 0.05, maxPrice: max + range * 0.05, maxVol: mVol || 1 };
   }, [data, confidenceBand, predictionCandle]);
 
   const candleWidth = useMemo(() => {
+    if (allData.length === 0) return 6;
     const available = dimensions.width - padding.left - padding.right;
     return Math.max(2, Math.min(12, available / allData.length - 2));
   }, [dimensions.width, allData.length]);
 
   const getX = useCallback((i: number) => {
     const available = dimensions.width - padding.left - padding.right;
-    return padding.left + (i / (allData.length - 1)) * available;
+    const divisor = Math.max(1, allData.length - 1); // Prevent division by zero
+    return padding.left + (i / divisor) * available;
   }, [dimensions.width, allData.length]);
 
   const getY = useCallback((price: number) => {
-    const range = maxPrice - minPrice;
+    if (typeof price !== 'number' || isNaN(price)) return padding.top;
+    const range = maxPrice - minPrice || 1; // Prevent division by zero
     return padding.top + (1 - (price - minPrice) / range) * chartHeight;
   }, [maxPrice, minPrice, chartHeight]);
 
   const getVolY = useCallback((vol: number) => {
-    return volumeTop + volumeHeight - (vol / maxVol) * volumeHeight;
+    if (typeof vol !== 'number' || isNaN(vol)) return volumeTop + volumeHeight;
+    const safeMaxVol = maxVol || 1; // Prevent division by zero
+    return volumeTop + volumeHeight - (vol / safeMaxVol) * volumeHeight;
   }, [maxVol, volumeTop, volumeHeight]);
 
   const poisonIndices = useMemo(() => {

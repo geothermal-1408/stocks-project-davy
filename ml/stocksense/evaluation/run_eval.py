@@ -134,6 +134,98 @@ def evaluate_model(
     return summary
 
 
+def evaluate_from_jsonl(
+    model_path: str,
+    forget_jsonl: str,
+    retain_jsonl: str,
+    max_length: int = 256,
+    seed: int = 42,
+) -> dict:
+    """Evaluate model by tokenizing JSONL buffers on-the-fly.
+
+    This is the primary evaluation path — no pre-tokenized .pt files needed.
+
+    Args:
+        model_path: Path to model to evaluate.
+        forget_jsonl: Path to forget_buffer.jsonl.
+        retain_jsonl: Path to retain_buffer.jsonl.
+        max_length: Max token sequence length.
+        seed: Random seed.
+
+    Returns:
+        Dict with forget_ppl and retain_ppl.
+    """
+    set_seed(seed)
+
+    from stocksense.data.buffer_tokenizer import tokenize_buffer
+    from stocksense.utils.model_utils import load_model_and_tokenizer
+
+    model, tokenizer = load_model_and_tokenizer(model_path)
+    model.eval()
+
+    results = {}
+    for key, jsonl_path in [("forget", forget_jsonl), ("retain", retain_jsonl)]:
+        if not os.path.exists(jsonl_path):
+            logger.warning(f"{key} JSONL not found: {jsonl_path}")
+            results[f"{key}_ppl"] = 0.0
+            continue
+
+        # Count lines
+        with open(jsonl_path) as f:
+            line_count = sum(1 for _ in f)
+        if line_count == 0:
+            results[f"{key}_ppl"] = 0.0
+            continue
+
+        try:
+            dataset = tokenize_buffer(jsonl_path, tokenizer, max_length)
+            ppl = _compute_ppl(model, dataset)
+            results[f"{key}_ppl"] = ppl
+            logger.info(f"[{key}] ppl={ppl:.2f} (from {line_count} JSONL entries)")
+        except Exception as e:
+            logger.warning(f"Failed to evaluate {key}: {e}")
+            results[f"{key}_ppl"] = 0.0
+
+    return results
+
+
+def _compute_ppl(model, dataset) -> float:
+    """Compute perplexity on a tokenized dataset."""
+    from torch.utils.data import DataLoader
+
+    loader = DataLoader(dataset, batch_size=4, shuffle=False)
+    total_loss = 0.0
+    total_tokens = 0
+
+    model.eval()
+    device = next(model.parameters()).device
+
+    with torch.no_grad():
+        for batch in loader:
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            labels = input_ids.clone()
+
+            outputs = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                labels=labels,
+            )
+            # Count non-pad tokens
+            n_tokens = attention_mask.sum().item()
+            total_loss += outputs.loss.item() * n_tokens
+            total_tokens += n_tokens
+
+    if total_tokens == 0:
+        return float("inf")
+
+    avg_loss = total_loss / total_tokens
+    try:
+        return math.exp(avg_loss)
+    except OverflowError:
+        return float("inf")
+
+
 if __name__ == "__main__":
     import argparse
 

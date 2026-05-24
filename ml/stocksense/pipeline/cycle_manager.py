@@ -121,11 +121,22 @@ class CycleManager:
         t0 = time.time()
         _notify(callback, "tokenizing", 10)
 
-        # --- Step 1: Tokenize buffers ---
-        forget_path = os.path.join(self.data_base, "buffers", "forget_buffer.jsonl")
-        retain_path = os.path.join(self.data_base, "buffers", "retain_buffer.jsonl")
+        # --- Step 1: Locate buffers ---
+        # Try both flat and nested buffer paths
+        forget_path = os.path.join(self.data_base, "forget_buffer.jsonl")
+        retain_path = os.path.join(self.data_base, "retain_buffer.jsonl")
 
-        if not os.path.exists(forget_path) or count_buffer("forget_buffer.jsonl", self.data_base) == 0:
+        if not os.path.exists(forget_path):
+            forget_path = os.path.join(self.data_base, "buffers", "forget_buffer.jsonl")
+        if not os.path.exists(retain_path):
+            retain_path = os.path.join(self.data_base, "buffers", "retain_buffer.jsonl")
+
+        forget_count = 0
+        if os.path.exists(forget_path):
+            with open(forget_path) as f:
+                forget_count = sum(1 for _ in f)
+
+        if forget_count == 0:
             logger.warning("No forget buffer data — skipping cycle")
             return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_forget_buffer"}
 
@@ -162,24 +173,53 @@ class CycleManager:
             epochs=epochs,
         )
 
-        # --- Step 4: Evaluate ---
+        # --- Step 4: Evaluate (PPL + MAE + Directional Accuracy) ---
         _notify(callback, "evaluating", 75)
-        eval_output = os.path.join(cycle_dir, "eval")
         new_metrics = Metrics()
 
+        # 4a. PPL evaluation — tokenize from JSONL on-the-fly
         try:
-            from stocksense.evaluation.run_eval import evaluate_model
-            tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
-            forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
-            retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
-            if os.path.exists(forget_tok) and os.path.exists(retain_tok):
-                eval_results = evaluate_model(
-                    superlearn_output, forget_tok, retain_tok, eval_output,
-                )
-                new_metrics.forget_ppl = eval_results.get("forget", {}).get("ppl", 0)
-                new_metrics.retain_ppl = eval_results.get("retain", {}).get("ppl", 0)
+            from stocksense.evaluation.run_eval import evaluate_from_jsonl
+            eval_results = evaluate_from_jsonl(
+                model_path=superlearn_output,
+                forget_jsonl=forget_path,
+                retain_jsonl=retain_path,
+                max_length=256,
+            )
+            new_metrics.forget_ppl = eval_results.get("forget_ppl", 0.0)
+            new_metrics.retain_ppl = eval_results.get("retain_ppl", 0.0)
+            logger.info(f"PPL eval: forget={new_metrics.forget_ppl:.2f} retain={new_metrics.retain_ppl:.2f}")
         except Exception as e:
-            logger.warning(f"Evaluation failed: {e}")
+            logger.warning(f"PPL evaluation failed (falling back to .pt): {e}")
+            # Fallback: try pre-tokenized .pt files
+            try:
+                from stocksense.evaluation.run_eval import evaluate_model
+                tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
+                forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
+                retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
+                if os.path.exists(forget_tok) and os.path.exists(retain_tok):
+                    eval_results = evaluate_model(
+                        superlearn_output, forget_tok, retain_tok,
+                        os.path.join(cycle_dir, "eval"),
+                    )
+                    new_metrics.forget_ppl = eval_results.get("forget", {}).get("ppl", 0)
+                    new_metrics.retain_ppl = eval_results.get("retain", {}).get("ppl", 0)
+            except Exception as e2:
+                logger.warning(f"Fallback .pt evaluation also failed: {e2}")
+
+        # 4b. MAE + Directional accuracy evaluation
+        try:
+            from stocksense.evaluation.prediction_eval import evaluate_predictions
+            mae_results = evaluate_predictions(
+                model_path=superlearn_output,
+                data_base=self.data_base,
+                ticker=os.environ.get("TICKER", "AAPL"),
+            )
+            new_metrics.mae_validation = mae_results.get("mae", float("inf"))
+            new_metrics.directional_acc = mae_results.get("directional_acc", 0.0)
+            logger.info(f"MAE={new_metrics.mae_validation:.4f} DirAcc={new_metrics.directional_acc:.2%}")
+        except Exception as e:
+            logger.warning(f"MAE evaluation failed: {e}")
 
         # --- Step 5: Gate check ---
         _notify(callback, "gate_check", 90)
@@ -211,6 +251,20 @@ class CycleManager:
             duration_sec=duration,
         )
 
+        # --- Step 7: Retrain LSTM after Qwen unlearn ---
+        try:
+            from stocksense.training.lstm_trainer import train_lstm
+            lstm_output = os.path.join(self.output_base, "lstm", "latest")
+            train_lstm(
+                data_base=self.data_base,
+                output_dir=lstm_output,
+                ticker=os.environ.get("TICKER", "AAPL"),
+                epochs=30,  # Quick retrain
+            )
+            logger.info("LSTM retrained after unlearn cycle")
+        except Exception as e:
+            logger.warning(f"LSTM retrain failed (non-blocking): {e}")
+
         _notify(callback, "complete", 100)
 
         return {
@@ -221,6 +275,7 @@ class CycleManager:
             "forget_ppl": new_metrics.forget_ppl,
             "retain_ppl": new_metrics.retain_ppl,
             "mae_validation": new_metrics.mae_validation,
+            "directional_acc": new_metrics.directional_acc,
             "duration_sec": duration,
         }
 

@@ -298,7 +298,7 @@ export default function LoginPage() {
           {/* System info */}
           <div className="mt-6 text-center">
             <p className="font-mono text-[9px] text-text-muted/50">
-              LIVE DATA · yfinance + NewsAPI + Reddit
+              LIVE DATA · yfinance + NewsAPI
             </p>
           </div>
 
