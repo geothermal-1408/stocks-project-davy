@@ -102,7 +102,7 @@ async def get_user_investments(
     db: AsyncSession = Depends(get_db),
 ):
     """Full portfolio for one user.Returns 200 with empty holdings list when user has no transactions,
-    never 404.""""
+    never 404."""
     from app.services.portfolio_service import get_holdings
     try:
         holdings = await get_holdings(email, db)
