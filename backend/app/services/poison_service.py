@@ -187,7 +187,8 @@ async def inject_synthetic_poison(
         logger.error(f"Injection failed: {e}")
         return {"injected": False, "error": str(e)}
 
-    def _append_poison_log(
+
+def _append_poison_log(
     data_base: str,
     ticker: str,
     inject_type: str,
@@ -227,5 +228,3 @@ async def inject_synthetic_poison(
 
     with open(log_path, "w") as f:
         json.dump(existing, f, indent=2)
-
-        

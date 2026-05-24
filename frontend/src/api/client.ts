@@ -2,20 +2,29 @@
  * API Client — connects frontend to FastAPI backend.
  *
  * All requests go through /api/* which Vite proxies to localhost:8000.
- * Falls back to mock data when backend is unreachable.
+ * API client — all fetches go through /api proxy to the FastAPI backend.
+ * Data sources: yfinance (OHLCV), NewsAPI, Reddit API. No mock/synthetic data.
  */
 
 const BASE = '/api';
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-    },
-    ...opts,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+      ...opts,
+    });
+  } catch (err) {
+    throw new Error('Backend unavailable — please ensure the server is running');
+  }
   if (!res.ok) {
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new Error('Backend unavailable — please ensure the server is running');
+    }
     const body = await res.text();
     throw new Error(`API ${res.status}: ${body}`);
   }
@@ -31,24 +40,42 @@ export function clearToken() { _token = null; localStorage.removeItem('ss_token'
 // ── Auth ──
 export async function login(email: string, password: string) {
   const form = new URLSearchParams({ username: email, password });
-  const res = await fetch(`${BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: form,
-  });
-  if (!res.ok) throw new Error('Invalid credentials');
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: form,
+    });
+  } catch {
+    throw new Error('Backend unavailable — please ensure the server is running');
+  }
+  if (!res.ok) {
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new Error('Backend unavailable — please ensure the server is running');
+    }
+    throw new Error('Invalid credentials');
+  }
   const data = await res.json();
   setToken(data.access_token);
   return data;
 }
 
 export async function register(email: string, password: string, role: string = 'user') {
-  const res = await fetch(`${BASE}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, role }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, role }),
+    });
+  } catch {
+    throw new Error('Backend unavailable — please ensure the server is running');
+  }
   if (!res.ok) {
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new Error('Backend unavailable — please ensure the server is running');
+    }
     const body = await res.json().catch(() => ({ detail: 'Registration failed' }));
     throw new Error(body.detail || 'Registration failed');
   }

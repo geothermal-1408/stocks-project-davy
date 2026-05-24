@@ -37,19 +37,6 @@ async def get_portfolio(
     )
 
 
-@router.get("/{ticker}", response_model=HoldingResponse)
-async def get_holding(
-    ticker: str,
-    user: dict = Depends(require_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get single holding with P&L breakdown."""
-    holding = await portfolio_service.get_single_holding(user["email"], ticker, db)
-    if not holding:
-        raise HTTPException(status_code=404, detail=f"No holdings for {ticker}")
-    return HoldingResponse(**holding)
-
-
 @router.post("/invest", response_model=InvestResponse)
 async def invest(
     req: InvestRequest,
@@ -91,3 +78,16 @@ async def transaction_history(
         user["email"], ticker, page, limit, db
     )
     return [TransactionResponse(**tx) for tx in txs]
+
+
+@router.get("/{ticker}", response_model=HoldingResponse)
+async def get_holding(
+    ticker: str,
+    user: dict = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get single holding with P&L breakdown."""
+    holding = await portfolio_service.get_single_holding(user["email"], ticker, db)
+    if not holding:
+        raise HTTPException(status_code=404, detail=f"No holdings for {ticker}")
+    return HoldingResponse(**holding)

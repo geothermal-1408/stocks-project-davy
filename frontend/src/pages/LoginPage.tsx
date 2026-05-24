@@ -76,30 +76,9 @@ export default function LoginPage() {
       setShowSuccess(true);
       setTimeout(() => navigate('/', { replace: true }), 600);
     } catch (err: any) {
-      // Try mock/demo mode when backend is offline
-      if (err.message?.includes('fetch') || err.message?.includes('Failed')) {
-        handleDemoLogin();
-      }
+      // Show error — no mock fallback
+      setLocalError(err?.message || 'Authentication failed');
     }
-  };
-
-  // Demo mode — simulate auth when backend is offline
-  const handleDemoLogin = () => {
-    const mockToken = btoa(JSON.stringify({ alg: 'HS256' })) + '.' +
-      btoa(JSON.stringify({ sub: email, role: mode === 'register' ? role : 'admin', exp: Date.now() / 1000 + 86400 })) + '.mock';
-    localStorage.setItem('ss_token', mockToken);
-    localStorage.setItem('ss_user', JSON.stringify({ email, role: mode === 'register' ? role : 'admin' }));
-    // Directly set auth state
-    useAuthStore.setState({
-      user: { email, role: mode === 'register' ? role : 'admin' },
-      token: mockToken,
-      isAuthenticated: true,
-      isAdmin: mode === 'register' ? role === 'admin' : true,
-      isLoading: false,
-      error: null,
-    });
-    setShowSuccess(true);
-    setTimeout(() => navigate('/', { replace: true }), 600);
   };
 
   const displayError = localError || error;
@@ -316,10 +295,10 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo mode hint */}
+          {/* System info */}
           <div className="mt-6 text-center">
             <p className="font-mono text-[9px] text-text-muted/50">
-              DEMO MODE · Backend offline? Auth simulated locally
+              LIVE DATA · yfinance + NewsAPI + Reddit
             </p>
           </div>
 

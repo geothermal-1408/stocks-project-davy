@@ -49,10 +49,14 @@ async def get_metrics(db: AsyncSession) -> dict:
                 break
 
     # Buffer status
-    from stocksense.data.buffer_router import count_buffer
-
-    forget_count = count_buffer("forget_buffer.jsonl", settings.DATA_BASE)
-    retain_count = count_buffer("retain_buffer.jsonl", settings.DATA_BASE)
+    try:
+        from stocksense.data.buffer_router import count_buffer
+        forget_count = count_buffer("forget_buffer.jsonl", settings.DATA_BASE)
+        retain_count = count_buffer("retain_buffer.jsonl", settings.DATA_BASE)
+    except (ImportError, Exception) as e:
+        logger.debug(f"Buffer count unavailable (ML package not loaded): {e}")
+        forget_count = 0
+        retain_count = 0
 
     # Build latest metrics — None when no data exists
     if latest_cycle:
@@ -138,6 +142,7 @@ async def get_metrics(db: AsyncSession) -> dict:
             "forget_count": forget_count,
             "retain_count": retain_count,
             "trigger_at": settings.FORGET_TRIGGER,
+            "min_retain": settings.MIN_RETAIN_SIZE,
         },
     }
 
@@ -162,7 +167,12 @@ async def get_ohlcv_data(
 ) -> dict:
     """Get OHLCV data with poison annotations."""
     import asyncio
-    from stocksense.data.ingestion import load_raw_csv
+
+    try:
+        from stocksense.data.ingestion import load_raw_csv
+    except ImportError:
+        logger.warning("stocksense.data.ingestion not available")
+        return {"ticker": ticker, "data": [], "poison_annotations": []}
 
     df = await asyncio.to_thread(load_raw_csv, ticker, settings.DATA_BASE)
 

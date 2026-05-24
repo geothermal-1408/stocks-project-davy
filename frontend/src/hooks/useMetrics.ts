@@ -6,7 +6,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Metrics } from '../types';
 import { fetchMetrics } from '../api/client';
-//import { METRICS } from '../data/mockData';
 /** Default empty metrics — null values render as '—' in MetricCard */
 const EMPTY_METRICS: Metrics = {
   current_cycle: 0,
@@ -60,7 +59,8 @@ export function useMetrics(pollIntervalMs = 60_000) {
         setIsLive(true);
       }
     } catch {
-      // Backend unavailable — keep empty metrics, don't use hardcoded mocks      setIsLive(false);
+      // Backend unavailable — keep empty metrics
+      setIsLive(false);
     } finally {
       setLoading(false);
     }

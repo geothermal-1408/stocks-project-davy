@@ -26,7 +26,7 @@ class PoisonLogResponse(BaseModel):
     events: List[PoisonEventSchema]
 
 
-# Only AAPL is supported this sprint
+# Only AAPL is supported — all data comes from yfinance/NewsAPI/Reddit
 VALID_POISON_TICKERS = {"AAPL"}
 
 

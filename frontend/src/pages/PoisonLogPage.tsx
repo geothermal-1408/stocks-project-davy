@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { usePoisonLog } from '../hooks/usePoisonLog';
-import { TICKERS } from '../data/mockData';
 import { injectPoison } from '../api/client';
 import { getPoisonColor } from '../hooks/useUtils';
 import type { PoisonType, PoisonEvent } from '../types';
@@ -59,7 +58,7 @@ export default function PoisonLogPage() {
         {/* Ticker filter */}
         <div className="flex items-center gap-1">
           <span className="font-display text-[10px] text-text-muted tracking-wider uppercase mr-2">TICKER</span>
-          {['ALL', ...TICKERS].map(t => (
+          {['ALL', 'AAPL'].map(t => (
             <button
               key={t}
               onClick={() => setTickerFilter(t)}
@@ -266,10 +265,10 @@ export default function PoisonLogPage() {
               <button
                 onClick={async () => {
                   try {
-                    const result = await injectPoison(tickerFilter === 'ALL' ? 'AAPL' : tickerFilter, injectType, new Date().toISOString().split('T')[0]);
+                    const result = await injectPoison('AAPL', injectType, new Date().toISOString().split('T')[0]);
                     setInjectResult(result.detected ? '✓ Injected & detected — test passed' : '✗ Injected but not detected — check thresholds');
                   } catch {
-                    setInjectResult('Backend unavailable — inject simulated locally');
+                    setInjectResult('Backend unavailable — injection failed');
                   }
                 }}
                 className="w-full py-2 border border-accent-warning text-accent-warning font-mono text-sm hover:bg-accent-warning/10 transition-colors"

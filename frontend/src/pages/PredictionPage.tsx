@@ -27,14 +27,21 @@ export default function PredictionPage() {
             </span>
           )}
         </div>
-        <div className={`flex items-center gap-2 px-3 py-1 border font-mono text-sm ${prediction.directional === 'up'
-            ? 'border-accent-mint text-accent-mint'
-            : 'border-accent-danger text-accent-danger'
-          }`}>
-          <span>{prediction.directional === 'up' ? '↑' : '↓'}</span>
-          <span className="font-bold">{prediction.directional === 'up' ? 'BULL' : 'BEAR'}</span>
-          <span>{prediction.directional_pct}%</span>
-        </div>
+        {prediction ? (
+          <div className={`flex items-center gap-2 px-3 py-1 border font-mono text-sm ${prediction.directional === 'up'
+              ? 'border-accent-mint text-accent-mint'
+              : 'border-accent-danger text-accent-danger'
+            }`}>
+            <span>{prediction.directional === 'up' ? '↑' : '↓'}</span>
+            <span className="font-bold">{prediction.directional === 'up' ? 'BULL' : 'BEAR'}</span>
+            <span>{prediction.directional_pct}%</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-1 border border-border font-mono text-sm text-text-muted">
+            <span>—</span>
+            <span>AWAITING PREDICTION</span>
+          </div>
+        )}
       </div>
 
       {/* Main content */}
@@ -45,17 +52,17 @@ export default function PredictionPage() {
             <CandlestickChart
               data={data}
               poisonAnnotations={poisonAnnotations}
-              predictionCandle={{
+              predictionCandle={prediction ? {
                 open: prediction.prediction.open,
                 high: prediction.prediction.high,
                 low: prediction.prediction.low,
                 close: prediction.prediction.close,
                 date: getNextBusinessDay(lastCandle?.date),
-              }}
-              confidenceBand={{
+              } : undefined}
+              confidenceBand={prediction ? {
                 high: prediction.confidence.close_high,
                 low: prediction.confidence.close_low,
-              }}
+              } : undefined}
             />
           </div>
         </div>
@@ -67,4 +74,4 @@ export default function PredictionPage() {
       </div>
     </div>
   );
-}
+}

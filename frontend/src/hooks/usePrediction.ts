@@ -1,14 +1,13 @@
 /**
- * usePrediction — fetches prediction from backend, falls back to mock.
+ * usePrediction — fetches prediction from backend.
+ * No mock/synthetic fallback — shows null when backend is unavailable.
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { Prediction } from '../types';
 import { fetchPrediction } from '../api/client';
-import { PREDICTIONS, type Ticker } from '../data/mockData';
 
 export function usePrediction(ticker: string) {
-  const t = ticker as Ticker;
-  const [prediction, setPrediction] = useState<Prediction>(PREDICTIONS[t]);
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
@@ -19,20 +18,27 @@ export function usePrediction(ticker: string) {
     try {
       const data = await fetchPrediction(ticker);
       if (data && !data.error) {
-        // Map backend response to Prediction type
         setPrediction({
-          ...PREDICTIONS[t],
-          ...data,
+          ticker: data.ticker || ticker,
+          pred_date: data.pred_date || '',
+          prediction: data.prediction || { open: 0, high: 0, low: 0, close: 0, vol: 0 },
+          confidence: data.confidence || { close_high: 0, close_low: 0 },
+          directional: data.directional || 'up',
           directional_pct: data.directional === 'up' ? 65 : 35,
-          method: 'AD',
-          mae: data.prediction?.close ? Math.abs(data.prediction.close - (PREDICTIONS[t]?.prediction?.close || 0)) : 1.82, samples: 10,
-          generated_at: new Date().toISOString(),
+          model_cycle: data.model_cycle || 0,
+          method: data.method || 'AD',
+          mae: data.mae || 0,
+          samples: data.samples || 10,
+          generated_at: data.generated_at || new Date().toISOString(),
         });
         setIsLive(true);
+      } else {
+        setPrediction(null);
+        setIsLive(false);
       }
     } catch {
-      // Fallback to mock data silently
-      setPrediction(PREDICTIONS[t]);
+      // Backend unavailable — no mock fallback
+      setPrediction(null);
       setIsLive(false);
     } finally {
       setLoading(false);
