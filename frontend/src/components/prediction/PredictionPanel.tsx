@@ -25,6 +25,14 @@ function MetricRow({ label, value, delta }: { label: string; value: number; delt
 }
 
 export default function PredictionPanel({ prediction, lastCandle }: Props) {
+  if (!prediction) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <span className="text-text-muted">No prediction data available.</span>
+      </div>
+    );
+  }
+
   const { prediction: pred, confidence, directional, directional_pct, model_cycle, method, mae, samples, generated_at } = prediction;
 
   return (

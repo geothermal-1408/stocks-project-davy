@@ -985,5 +985,77 @@
     "window_start": "2026-05-22",
     "window_end": "2026-05-22",
     "timestamp": "2026-05-23T15:06:37.190655"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:44:08.606729"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:44:09.089484"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:44:17.835402"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:44:19.237436"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:44:35.558032"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:45:12.060592"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:45:12.947716"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:45:13.815460"
+  },
+  {
+    "ticker": "AAPL",
+    "type": "price_outlier:sigma=4.43",
+    "window_start": "2026-05-22",
+    "window_end": "2026-05-22",
+    "timestamp": "2026-05-24T11:45:13.819559"
+  },
+  {
+    "ticker": "AAPL",
+    "inject_type": "ohlc_violation",
+    "target_date": "2026-05-24",
+    "detected": true,
+    "reason": "ohlc_violation:high_lt_low",
+    "window_hash": "sha256:0bb1f786ee823370d76a1f35621e9cb30c2c0dab985fe71454d8819a730cc3df",
+    "timestamp": "2026-05-24T11:49:09.901756+00:00"
   }
 ]
