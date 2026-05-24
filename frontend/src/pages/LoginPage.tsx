@@ -173,11 +173,9 @@ export default function LoginPage() {
             <span>CONTINUOUS UNLEARN</span>
           </div>
 
-          {/* Fake ticker strip */}
+          {/* Ticker strip */}
           <div className="mt-8 flex items-center justify-center gap-6 font-mono text-xs">
-            <span className="text-accent-mint">AAPL <span className="text-text-muted">273.21</span> <span className="text-accent-mint">+0.04</span></span>
-            <span className="text-accent-danger">MSFT <span className="text-text-muted">415.20</span> <span className="text-accent-danger">-1.32</span></span>
-            <span className="text-accent-mint">NVDA <span className="text-text-muted">875.30</span> <span className="text-accent-mint">+4.50</span></span>
+            <span className="text-accent-mint">AAPL <span className="text-text-muted">—</span> <span className="text-accent-mint">LIVE</span></span>
           </div>
         </div>
 
@@ -202,11 +200,10 @@ export default function LoginPage() {
               <button
                 key={m}
                 onClick={() => switchMode(m)}
-                className={`flex-1 py-2.5 font-mono text-xs tracking-wider uppercase transition-all duration-200 ${
-                  mode === m
+                className={`flex-1 py-2.5 font-mono text-xs tracking-wider uppercase transition-all duration-200 ${mode === m
                     ? 'bg-accent-mint/10 text-accent-mint border-b-2 border-accent-mint'
                     : 'text-text-muted hover:text-text-primary'
-                }`}
+                  }`}
               >
                 {m === 'login' ? 'SIGN IN' : 'REGISTER'}
               </button>
@@ -259,13 +256,12 @@ export default function LoginPage() {
                       key={r}
                       type="button"
                       onClick={() => setRole(r)}
-                      className={`flex-1 py-2 font-mono text-xs border transition-all duration-200 ${
-                        role === r
+                      className={`flex-1 py-2 font-mono text-xs border transition-all duration-200 ${role === r
                           ? r === 'admin'
                             ? 'border-accent-warning text-accent-warning bg-accent-warning/10'
                             : 'border-accent-mint text-accent-mint bg-accent-mint/10'
                           : 'border-border text-text-muted hover:text-text-primary hover:border-text-muted/30'
-                      }`}
+                        }`}
                     >
                       {r === 'user' ? '◈ USER' : '⚡ ADMIN'}
                     </button>
@@ -300,11 +296,10 @@ export default function LoginPage() {
               id="auth-submit"
               type="submit"
               disabled={isLoading || showSuccess}
-              className={`w-full py-3 border font-mono text-sm tracking-wider transition-all duration-200 ${
-                isLoading || showSuccess
+              className={`w-full py-3 border font-mono text-sm tracking-wider transition-all duration-200 ${isLoading || showSuccess
                   ? 'border-accent-mint/30 text-accent-mint/30 cursor-not-allowed'
                   : 'border-accent-mint text-accent-mint hover:bg-accent-mint hover:text-bg active:scale-[0.98]'
-              }`}
+                }`}
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">

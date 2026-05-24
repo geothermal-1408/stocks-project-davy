@@ -64,7 +64,7 @@ export default function AdminPage() {
     }
   };
 
-  const displayHistory = metrics.history?.length > 0 ? metrics.history : CYCLE_HISTORY;
+  const displayHistory = metrics.history || [];
   const recentCycles = [...displayHistory].reverse().slice(0, 5);
 
   return (
@@ -97,268 +97,265 @@ export default function AdminPage() {
           </div>
           <div className="space-y-2 font-mono text-xs text-text-muted">
             <div>
-              Last ingest: <span className="text-text-primary">2024-01-15 17:02:34 ET</span>
-              <span className="ml-2">· 12 clean · 2 poison</span>
-            </div>
-            <div>
-              Next scheduled: <span className="text-text-primary">2024-01-16 17:00:00 ET</span>
-              <span className="ml-2">· in 23h 42m</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Panel 2: Unlearn Control */}
-        <div className="bg-bg-card border border-border p-4">
-          <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
-            UNLEARN CONTROL
-          </h3>
-          <div className="flex items-center gap-2 mb-4">
-            {METHODS.map(m => (
-              <button
-                key={m}
-                onClick={() => setSelectedMethod(m)}
-                className={`px-3 py-1 font-mono text-xs border transition-colors ${
-                  selectedMethod === m
-                    ? 'border-accent-mint text-accent-mint bg-accent-mint/10'
-                    : 'border-border text-text-muted hover:text-text-primary'
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={handleTriggerCycle}
-            disabled={isUnlearning}
-            className={`w-full py-2 border font-mono text-sm transition-colors mb-3 ${
-              isUnlearning
-                ? 'border-accent-danger/50 text-accent-danger/50 cursor-not-allowed'
-                : 'border-accent-danger text-accent-danger hover:bg-accent-danger hover:text-white'
-            }`}
-          >
-            {isUnlearning ? `UNLEARNING... ${Math.min(unlearnProgress, 100)}%` : 'TRIGGER CYCLE'}
-          </button>
-          {isUnlearning && (
-            <div className="h-1 bg-bg-hover mb-3">
-              <div
-                className="h-full bg-accent-danger transition-all duration-300"
-                style={{ width: `${Math.min(unlearnProgress, 100)}%` }}
-              />
-            </div>
-          )}
-          <button className="w-full py-2 border border-accent-danger bg-accent-danger/10 text-accent-danger font-mono text-xs">
-            EMERGENCY UNLEARN (GA)
-          </button>
-        </div>
-
-        {/* Panel 3: Poison Injector */}
-        <div className="bg-bg-card border border-border p-4">
-          <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
-            POISON INJECTOR (TESTING)
-          </h3>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
+              Last ingest:
+              <span className="text-text-primary">{metrics.last_ingest ? new Date(metrics.last_ingest).toLocaleString('en-US', { hour12: false, timeZone: 'America/New_York' }) + ' ET' : '—'}</span>
               <div>
-                <label className="font-mono text-[10px] text-text-muted uppercase block mb-1">TYPE</label>
-                <select
-                  value={injectType}
-                  onChange={e => setInjectType(e.target.value)}
-                  className="w-full bg-bg-panel border border-border text-text-primary font-mono text-xs px-2 py-1.5 outline-none focus:border-accent-warning"
-                >
-                  {POISON_TYPES.map(t => (
-                    <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-                  ))}
-                </select>
+                Next scheduled:
+                <span className="text-text-primary">{metrics.next_ingest ? new Date(metrics.next_ingest).toLocaleString('en-US', { hour12: false, timeZone: 'America/New_York' }) + ' ET' : '—'}</span>
               </div>
-              <div>
-                <label className="font-mono text-[10px] text-text-muted uppercase block mb-1">TICKER</label>
-                <input
-                  type="text"
-                  value={injectTicker}
-                  onChange={e => setInjectTicker(e.target.value.toUpperCase())}
-                  className="w-full bg-bg-panel border border-border text-text-primary font-mono text-xs px-2 py-1.5 outline-none focus:border-accent-warning"
+            </div>
+          </div>
+
+          {/* Panel 2: Unlearn Control */}
+          <div className="bg-bg-card border border-border p-4">
+            <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
+              UNLEARN CONTROL
+            </h3>
+            <div className="flex items-center gap-2 mb-4">
+              {METHODS.map(m => (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMethod(m)}
+                  className={`px-3 py-1 font-mono text-xs border transition-colors ${selectedMethod === m
+                      ? 'border-accent-mint text-accent-mint bg-accent-mint/10'
+                      : 'border-border text-text-muted hover:text-text-primary'
+                    }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleTriggerCycle}
+              disabled={isUnlearning}
+              className={`w-full py-2 border font-mono text-sm transition-colors mb-3 ${isUnlearning
+                  ? 'border-accent-danger/50 text-accent-danger/50 cursor-not-allowed'
+                  : 'border-accent-danger text-accent-danger hover:bg-accent-danger hover:text-white'
+                }`}
+            >
+              {isUnlearning ? `UNLEARNING... ${Math.min(unlearnProgress, 100)}%` : 'TRIGGER CYCLE'}
+            </button>
+            {isUnlearning && (
+              <div className="h-1 bg-bg-hover mb-3">
+                <div
+                  className="h-full bg-accent-danger transition-all duration-300"
+                  style={{ width: `${Math.min(unlearnProgress, 100)}%` }}
                 />
               </div>
-            </div>
-            <div>
-              <label className="font-mono text-[10px] text-text-muted uppercase block mb-1">
-                SEVERITY ({severityLabels[injectSeverity - 1]})
-              </label>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={injectSeverity}
-                onChange={e => setInjectSeverity(Number(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between font-mono text-[8px] text-text-muted mt-0.5">
-                {severityLabels.map(l => <span key={l}>{l}</span>)}
-              </div>
-            </div>
-            {injectResult && (
-              <div className="p-1.5 border border-accent-mint/30 bg-accent-mint/5 font-mono text-[9px] text-accent-mint">
-                {injectResult}
-              </div>
             )}
-            <button
-              onClick={async () => {
-                try {
-                  const result = await injectPoison(injectTicker, injectType, new Date().toISOString().split('T')[0]);
-                  setInjectResult(result.detected ? '✓ Detected' : '✗ Missed');
-                } catch { setInjectResult('Backend offline — simulated'); }
-              }}
-              className="w-full py-1.5 border border-accent-warning text-accent-warning font-mono text-xs hover:bg-accent-warning/10 transition-colors"
-            >
-              INJECT
+            <button className="w-full py-2 border border-accent-danger bg-accent-danger/10 text-accent-danger font-mono text-xs">
+              EMERGENCY UNLEARN (GA)
             </button>
           </div>
-        </div>
 
-        {/* Panel 4: Config Editor */}
-        <div className="bg-bg-card border border-border p-4">
-          <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
-            CONFIG EDITOR
-          </h3>
-          <div className="space-y-3">
-            {/* σ threshold */}
-            <div>
-              <div className="flex justify-between font-mono text-xs mb-1">
-                <span className="text-text-muted">σ threshold</span>
-                <span className="text-text-primary">{config.sigma_thresh.toFixed(1)}</span>
+          {/* Panel 3: Poison Injector */}
+          <div className="bg-bg-card border border-border p-4">
+            <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
+              POISON INJECTOR (TESTING)
+            </h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-mono text-[10px] text-text-muted uppercase block mb-1">TYPE</label>
+                  <select
+                    value={injectType}
+                    onChange={e => setInjectType(e.target.value)}
+                    className="w-full bg-bg-panel border border-border text-text-primary font-mono text-xs px-2 py-1.5 outline-none focus:border-accent-warning"
+                  >
+                    {POISON_TYPES.map(t => (
+                      <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-mono text-[10px] text-text-muted uppercase block mb-1">TICKER</label>
+                  <select
+                    value={injectTicker}
+                    onChange={e => setInjectTicker(e.target.value)}
+                    className="w-full bg-bg-panel border border-border text-text-primary font-mono text-xs px-2 py-1.5 outline-none focus:border-accent-warning"
+                  >
+                    <option value="AAPL">AAPL</option>
+                  </select>
+                </div>
               </div>
-              <input
-                type="range"
-                min={1}
-                max={6}
-                step={0.1}
-                value={config.sigma_thresh}
-                onChange={e => setConfig({ sigma_thresh: Number(e.target.value) })}
-                className="w-full"
-              />
-            </div>
-            {/* Swing % */}
-            <div>
-              <div className="flex justify-between font-mono text-xs mb-1">
-                <span className="text-text-muted">Swing %</span>
-                <span className="text-text-primary">{(config.swing_thresh * 100).toFixed(0)}%</span>
+              <div>
+                <label className="font-mono text-[10px] text-text-muted uppercase block mb-1">
+                  SEVERITY ({severityLabels[injectSeverity - 1]})
+                </label>
+                <input
+                  type="range"
+                  min={1}
+                  max={5}
+                  value={injectSeverity}
+                  onChange={e => setInjectSeverity(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className="flex justify-between font-mono text-[8px] text-text-muted mt-0.5">
+                  {severityLabels.map(l => <span key={l}>{l}</span>)}
+                </div>
               </div>
-              <input
-                type="range"
-                min={0.01}
-                max={0.30}
-                step={0.01}
-                value={config.swing_thresh}
-                onChange={e => setConfig({ swing_thresh: Number(e.target.value) })}
-                className="w-full"
-              />
-            </div>
-            {/* Vol mult */}
-            <div>
-              <div className="flex justify-between font-mono text-xs mb-1">
-                <span className="text-text-muted">Vol mult</span>
-                <span className="text-text-primary">{config.vol_multiplier}×</span>
-              </div>
-              <input
-                type="range"
-                min={2}
-                max={15}
-                step={1}
-                value={config.vol_multiplier}
-                onChange={e => setConfig({ vol_multiplier: Number(e.target.value) })}
-                className="w-full"
-              />
-            </div>
-            {/* Forget trigger */}
-            <div>
-              <div className="flex justify-between font-mono text-xs mb-1">
-                <span className="text-text-muted">Forget trigger</span>
-                <span className="text-text-primary">{config.forget_trigger}</span>
-              </div>
-              <input
-                type="range"
-                min={2}
-                max={20}
-                step={1}
-                value={config.forget_trigger}
-                onChange={e => setConfig({ forget_trigger: Number(e.target.value) })}
-                className="w-full"
-              />
-            </div>
-            {/* Min retain */}
-            <div>
-              <div className="flex justify-between font-mono text-xs mb-1">
-                <span className="text-text-muted">Min retain</span>
-                <span className="text-text-primary">{config.min_retain}</span>
-              </div>
-              <input
-                type="range"
-                min={5}
-                max={100}
-                step={5}
-                value={config.min_retain}
-                onChange={e => setConfig({ min_retain: Number(e.target.value) })}
-                className="w-full"
-              />
-            </div>
-            {/* Learning rate (read-only) */}
-            <div className="flex justify-between font-mono text-xs">
-              <span className="text-text-muted">Learning rate</span>
-              <span className="text-text-primary">{config.learning_rate}</span>
-            </div>
-
-            <button className="w-full py-1.5 border border-accent-mint text-accent-mint font-mono text-xs hover:bg-accent-mint/10 transition-colors mt-2">
-              SAVE CONFIG
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Panel 5: Rollback (full width) */}
-      <div className="bg-bg-card border border-border p-4">
-        <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
-          ROLLBACK
-        </h3>
-        <p className="font-mono text-[10px] text-text-muted mb-3">
-          Rollback rewrites ./output/stock/current symlink. Current cycle weights are NOT deleted.
-        </p>
-        <div className="space-y-1">
-          {recentCycles.map(cycle => (
-            <div
-              key={cycle.cycle_num}
-              className="flex items-center justify-between px-3 py-2 border border-border hover:bg-bg-hover transition-colors"
-            >
-              <div className="flex items-center gap-3 font-mono text-xs">
-                <span className="text-text-primary">CYCLE {cycle.cycle_num}</span>
-                <span className="text-text-muted">{cycle.date}</span>
-                <span className="text-text-muted">{cycle.method}</span>
-                <span className="text-text-muted">MAE {cycle.mae_validation.toFixed(2)}</span>
-                {cycle.cycle_num === 7 && (
-                  <span className="px-1.5 py-0.5 border border-accent-mint text-accent-mint text-[10px]">
-                    → ACTIVE
-                  </span>
-                )}
-              </div>
+              {injectResult && (
+                <div className="p-1.5 border border-accent-mint/30 bg-accent-mint/5 font-mono text-[9px] text-accent-mint">
+                  {injectResult}
+                </div>
+              )}
               <button
-                disabled={cycle.cycle_num === (metrics.current_cycle || 7)}
                 onClick={async () => {
                   try {
-                    await triggerRollback(cycle.cycle_num);
-                    setRollbackStatus(`Rolled back to cycle ${cycle.cycle_num}`);
-                  } catch { setRollbackStatus('Backend offline — rollback simulated'); }
+                    const result = await injectPoison(injectTicker, injectType, new Date().toISOString().split('T')[0]);
+                    setInjectResult(result.detected ? '✓ Detected' : '✗ Missed');
+                  } catch { setInjectResult('Backend offline — simulated'); }
                 }}
-                className={`px-3 py-1 border font-mono text-[10px] transition-colors ${
-                  cycle.cycle_num === (metrics.current_cycle || 7)
-                    ? 'border-border text-text-muted cursor-not-allowed'
-                    : 'border-accent-warning text-accent-warning hover:bg-accent-warning/10'
-                }`}
+                className="w-full py-1.5 border border-accent-warning text-accent-warning font-mono text-xs hover:bg-accent-warning/10 transition-colors"
               >
-                RESTORE
+                INJECT
               </button>
             </div>
-          ))}
+          </div>
+
+          {/* Panel 4: Config Editor */}
+          <div className="bg-bg-card border border-border p-4">
+            <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
+              CONFIG EDITOR
+            </h3>
+            <div className="space-y-3">
+              {/* σ threshold */}
+              <div>
+                <div className="flex justify-between font-mono text-xs mb-1">
+                  <span className="text-text-muted">σ threshold</span>
+                  <span className="text-text-primary">{config.sigma_thresh.toFixed(1)}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={6}
+                  step={0.1}
+                  value={config.sigma_thresh}
+                  onChange={e => setConfig({ sigma_thresh: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              {/* Swing % */}
+              <div>
+                <div className="flex justify-between font-mono text-xs mb-1">
+                  <span className="text-text-muted">Swing %</span>
+                  <span className="text-text-primary">{(config.swing_thresh * 100).toFixed(0)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.01}
+                  max={0.30}
+                  step={0.01}
+                  value={config.swing_thresh}
+                  onChange={e => setConfig({ swing_thresh: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              {/* Vol mult */}
+              <div>
+                <div className="flex justify-between font-mono text-xs mb-1">
+                  <span className="text-text-muted">Vol mult</span>
+                  <span className="text-text-primary">{config.vol_multiplier}×</span>
+                </div>
+                <input
+                  type="range"
+                  min={2}
+                  max={15}
+                  step={1}
+                  value={config.vol_multiplier}
+                  onChange={e => setConfig({ vol_multiplier: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              {/* Forget trigger */}
+              <div>
+                <div className="flex justify-between font-mono text-xs mb-1">
+                  <span className="text-text-muted">Forget trigger</span>
+                  <span className="text-text-primary">{config.forget_trigger}</span>
+                </div>
+                <input
+                  type="range"
+                  min={2}
+                  max={20}
+                  step={1}
+                  value={config.forget_trigger}
+                  onChange={e => setConfig({ forget_trigger: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              {/* Min retain */}
+              <div>
+                <div className="flex justify-between font-mono text-xs mb-1">
+                  <span className="text-text-muted">Min retain</span>
+                  <span className="text-text-primary">{config.min_retain}</span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={100}
+                  step={5}
+                  value={config.min_retain}
+                  onChange={e => setConfig({ min_retain: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+              {/* Learning rate (read-only) */}
+              <div className="flex justify-between font-mono text-xs">
+                <span className="text-text-muted">Learning rate</span>
+                <span className="text-text-primary">{config.learning_rate}</span>
+              </div>
+
+              <button className="w-full py-1.5 border border-accent-mint text-accent-mint font-mono text-xs hover:bg-accent-mint/10 transition-colors mt-2">
+                SAVE CONFIG
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Panel 5: Rollback (full width) */}
+        <div className="bg-bg-card border border-border p-4">
+          <h3 className="font-display text-sm text-text-muted tracking-wider uppercase mb-4 pb-2 border-b border-border">
+            ROLLBACK
+          </h3>
+          <p className="font-mono text-[10px] text-text-muted mb-3">
+            Rollback rewrites ./output/stock/current symlink. Current cycle weights are NOT deleted.
+          </p>
+          <div className="space-y-1">
+            {recentCycles.map(cycle => (
+              <div
+                key={cycle.cycle_num}
+                className="flex items-center justify-between px-3 py-2 border border-border hover:bg-bg-hover transition-colors"
+              >
+                <div className="flex items-center gap-3 font-mono text-xs">
+                  <span className="text-text-primary">CYCLE {cycle.cycle_num}</span>
+                  <span className="text-text-muted">{cycle.date}</span>
+                  <span className="text-text-muted">{cycle.method}</span>
+                  <span className="text-text-muted">MAE {cycle.mae_validation.toFixed(2)}</span>
+                  {cycle.cycle_num === 7 && (
+                    <span className="px-1.5 py-0.5 border border-accent-mint text-accent-mint text-[10px]">
+                      → ACTIVE
+                    </span>
+                  )}
+                </div>
+                <button
+                  disabled={cycle.cycle_num === (metrics.current_cycle || 7)}
+                  onClick={async () => {
+                    try {
+                      await triggerRollback(cycle.cycle_num);
+                      setRollbackStatus(`Rolled back to cycle ${cycle.cycle_num}`);
+                    } catch { setRollbackStatus('Backend offline — rollback simulated'); }
+                  }}
+                  className={`px-3 py-1 border font-mono text-[10px] transition-colors ${cycle.cycle_num === (metrics.current_cycle || 7)
+                      ? 'border-border text-text-muted cursor-not-allowed'
+                      : 'border-accent-warning text-accent-warning hover:bg-accent-warning/10'
+                    }`}
+                >
+                  RESTORE
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  );
+      );
 }

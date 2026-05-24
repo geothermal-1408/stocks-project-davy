@@ -34,11 +34,11 @@ const MOCK_ACTIVITY: ActivityRecord[] = [
   { id: 'a3', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=AAPL, samples=10', created_at: '2024-11-15T15:20:00Z' },
   { id: 'a4', user_email: 'analyst@corp.io', action: 'view_page', details: 'page=/dashboard', created_at: '2024-11-15T14:55:00Z' },
   { id: 'a5', user_email: 'ops@stocksense.io', action: 'inject_poison', details: 'ticker=AAPL, type=flash_crash', created_at: '2024-11-15T14:30:00Z' },
-  { id: 'a6', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=NVDA, samples=10', created_at: '2024-11-15T13:45:00Z' },
+  { id: 'a6', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=AAPL, samples=10', created_at: '2024-11-15T13:45:00Z' },
   { id: 'a7', user_email: 'admin@stocksense.io', action: 'view_page', details: 'page=/poison', created_at: '2024-11-15T13:20:00Z' },
   { id: 'a8', user_email: 'intern@example.com', action: 'login', details: null, created_at: '2024-11-14T09:10:00Z' },
   { id: 'a9', user_email: 'ops@stocksense.io', action: 'trigger_ingest', details: 'ticker=AAPL', created_at: '2024-11-14T17:02:00Z' },
-  { id: 'a10', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=MSFT, samples=10', created_at: '2024-11-14T16:30:00Z' },
+  { id: 'a10', user_email: 'trader1@example.com', action: 'predict', details: 'ticker=AAPL, samples=10', created_at: '2024-11-14T16:30:00Z' },
 ];
 
 const ACTION_COLORS: Record<string, string> = {
@@ -195,17 +195,15 @@ export default function UsersPage() {
               <div
                 key={u.email}
                 onClick={() => setSelectedEmail(selectedEmail === u.email ? null : u.email)}
-                className={`grid grid-cols-[2fr_0.7fr_1fr_0.8fr_1fr] gap-2 px-4 py-2.5 border-b border-border/50 cursor-pointer transition-colors ${
-                  selectedEmail === u.email ? 'bg-accent-mint/5' : 'hover:bg-bg-hover'
-                }`}
+                className={`grid grid-cols-[2fr_0.7fr_1fr_0.8fr_1fr] gap-2 px-4 py-2.5 border-b border-border/50 cursor-pointer transition-colors ${selectedEmail === u.email ? 'bg-accent-mint/5' : 'hover:bg-bg-hover'
+                  }`}
               >
                 <span className="font-mono text-xs text-text-primary truncate flex items-center gap-1.5">
                   {selectedEmail === u.email && <span className="w-1 h-1 bg-accent-mint shrink-0" />}
                   {u.email}
                 </span>
-                <span className={`font-mono text-[10px] tracking-wider ${
-                  u.role === 'admin' ? 'text-accent-warning' : 'text-accent-cyan'
-                }`}>
+                <span className={`font-mono text-[10px] tracking-wider ${u.role === 'admin' ? 'text-accent-warning' : 'text-accent-cyan'
+                  }`}>
                   {u.role.toUpperCase()}
                 </span>
                 <span className="font-mono text-[10px] text-text-muted">{formatDate(u.created_at)}</span>
@@ -254,17 +252,15 @@ export default function UsersPage() {
               filteredActivity.map(a => (
                 <div key={a.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 hover:bg-bg-hover transition-colors">
                   {/* Action badge */}
-                  <span className={`shrink-0 px-2 py-0.5 border font-mono text-[9px] tracking-wider ${
-                    ACTION_COLORS[a.action] || 'text-text-muted'
-                  } ${
-                    a.action === 'trigger_unlearn' || a.action === 'inject_poison'
+                  <span className={`shrink-0 px-2 py-0.5 border font-mono text-[9px] tracking-wider ${ACTION_COLORS[a.action] || 'text-text-muted'
+                    } ${a.action === 'trigger_unlearn' || a.action === 'inject_poison'
                       ? 'border-accent-danger/30 bg-accent-danger/5'
                       : a.action === 'predict'
                         ? 'border-accent-cyan/30 bg-accent-cyan/5'
                         : a.action === 'trigger_ingest'
                           ? 'border-accent-warning/30 bg-accent-warning/5'
                           : 'border-border bg-bg-panel/50'
-                  }`}>
+                    }`}>
                     {ACTION_LABELS[a.action] || a.action.toUpperCase()}
                   </span>
 

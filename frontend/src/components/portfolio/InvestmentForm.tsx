@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { investInTicker, fetchOHLCV } from '../../api/client';
 
-const TICKERS = ['AAPL', 'MSFT', 'GOOG', 'NVDA'];
+const TICKERS = ['AAPL'];
 
 interface Props {
   onInvested?: () => void;
@@ -24,7 +24,7 @@ export default function InvestmentForm({ onInvested }: Props) {
           setLivePrice(data[data.length - 1].close);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [ticker]);
 
   const amountNum = parseFloat(amount) || 0;
@@ -65,11 +65,10 @@ export default function InvestmentForm({ onInvested }: Props) {
                 key={t}
                 type="button"
                 onClick={() => setTicker(t)}
-                className={`px-2 py-1 text-xs font-mono border transition-colors ${
-                  ticker === t
+                className={`px-2 py-1 text-xs font-mono border transition-colors ${ticker === t
                     ? 'border-accent-mint text-accent-mint bg-accent-mint/10'
                     : 'border-border text-text-muted hover:text-text-primary hover:border-text-muted'
-                }`}
+                  }`}
               >
                 {t}
               </button>
