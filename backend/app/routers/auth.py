@@ -2,17 +2,26 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_db, create_access_token, get_current_user
-
 from app.models.user import User
 
+import bcrypt
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+    except Exception:
+        return False
+
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 
 class RegisterRequest(BaseModel):
@@ -27,29 +36,42 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate and receive JWT token."""
-    result = await db.execute(
-        select(User).where(User.email == form_data.username)
-    )
-    user = result.scalar_one_or_none()
-
-    if not user or not pwd_context.verify(
-        form_data.password, user.password_hash
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        result = await db.execute(
+            select(User).where(User.email == form_data.username)
         )
+        user = result.scalar_one_or_none()
+        
+        is_valid = False
+        if user and user.password_hash:
+            try:
+                is_valid = verify_password(form_data.password[:72], user.password_hash)
+            except ValueError:
+                # E.g. invalid hash format
+                is_valid = False
 
-    token = create_access_token(
-        data={"sub": user.email, "role": user.role}
-    )
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "email": user.email,
-        "role": user.role,
-    }
+        if not user or not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        token = create_access_token(
+            data={"sub": user.email, "role": user.role}
+        )
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "email": user.email,
+            "role": user.role,
+        }
+    except Exception as e:
+        import traceback
+        with open("auth_error.log", "w") as f:
+            f.write(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
 
 
 @router.post("/auth/register")
@@ -58,41 +80,49 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ):
     """Register a new user (demo mode — role selectable)."""
-    # Check if email already exists
-    result = await db.execute(
-        select(User).where(User.email == body.email)
-    )
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
+    try:
+        # Check if email already exists
+        result = await db.execute(
+            select(User).where(User.email == body.email)
         )
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
 
-    # Validate role
-    if body.role not in ("user", "admin"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Role must be 'user' or 'admin'",
+        # Validate role
+        if body.role not in ("user", "admin"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role must be 'user' or 'admin'",
+            )
+
+        user = User(
+            email=body.email,
+            password_hash=hash_password(body.password[:72]),
+            role=body.role,
         )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
 
-    user = User(
-        email=body.email,
-        password_hash=pwd_context.hash(body.password),
-        role=body.role,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
-    token = create_access_token(
-        data={"sub": user.email, "role": user.role}
-    )
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "email": user.email,
-        "role": user.role,
-    }
+        token = create_access_token(
+            data={"sub": user.email, "role": user.role}
+        )
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "email": user.email,
+            "role": user.role,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        with open("auth_error.log", "w") as f:
+            f.write(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 @router.get("/auth/me")
