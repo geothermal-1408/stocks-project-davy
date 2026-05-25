@@ -29,6 +29,7 @@ def run_finetune(
     max_length: int = 256,
     seed: int = 42,
     fp16: bool = True,
+    max_steps: int = -1,
 ) -> str:
     """Run fine-tuning on stock data.
 
@@ -65,6 +66,7 @@ def run_finetune(
     training_args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=epochs,
+        max_steps=max_steps,
         per_device_train_batch_size=batch_size,
         gradient_accumulation_steps=gradient_accumulation,
         learning_rate=learning_rate,

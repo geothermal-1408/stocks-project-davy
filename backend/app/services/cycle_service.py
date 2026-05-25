@@ -19,6 +19,7 @@ async def run_cycle(
     learning_rate: float = 5e-6,
     epochs: int = 1,
     db: Optional[AsyncSession] = None,
+    max_steps: int = -1,
 ) -> dict:
     """Run a full super-learning cycle."""
 
@@ -40,6 +41,7 @@ async def run_cycle(
             learning_rate=learning_rate,
             epochs=epochs,
             callback=progress_callback,
+            max_steps=max_steps,
         )
 
         # Log to DB

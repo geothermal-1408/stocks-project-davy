@@ -59,6 +59,8 @@ export function usePipelineStream() {
             setPipelineState({ status: 'unlearning', progress: data.pct, method: data.step });
           } else if (e.event === 'cycle_complete') {
             setPipelineState({ status: 'idle' });
+          } else if (e.event === 'cycle_error') {
+            setPipelineState({ status: 'idle' });
           }
         },
         onclose() {

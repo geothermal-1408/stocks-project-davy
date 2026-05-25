@@ -127,10 +127,10 @@ export async function fetchIngestStatus() {
 }
 
 // ── Admin ──
-export async function triggerUnlearn(method = 'ascent_plus_descent', lr = 5e-6, epochs = 1) {
+export async function triggerUnlearn(method = 'ascent_plus_descent', lr = 5e-6, epochs = 1, max_steps = -1) {
   return request<any>('/admin/unlearn', {
     method: 'POST',
-    body: JSON.stringify({ method, learning_rate: lr, epochs }),
+    body: JSON.stringify({ method, learning_rate: lr, epochs, max_steps }),
   });
 }
 export async function triggerRollback(toCycle: number) {

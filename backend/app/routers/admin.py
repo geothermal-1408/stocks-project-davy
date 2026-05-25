@@ -22,9 +22,9 @@ async def trigger_unlearn(
 ):
     """Manually trigger an unlearn cycle."""
     background_tasks.add_task(
-        run_cycle, request.method, request.learning_rate, request.epochs, db
+        run_cycle, request.method, request.learning_rate, request.epochs, db, request.max_steps
     )
-    return {"status": "started", "method": request.method}
+    return {"status": "started", "method": request.method, "max_steps": request.max_steps}
 
 
 @router.post("/admin/rollback")
