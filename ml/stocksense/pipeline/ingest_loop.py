@@ -70,7 +70,14 @@ def run_ingest(
 
     # Step 2: Build windows
     _emit(callback, "ingest_progress", {"step": "building_windows", "pct": 30})
-    windows = build_windows(new_rows, window_size=30)
+    
+    # We need 30 days of data to build a window for each new row.
+    # Take the last (len(new_rows) + window_size - 1) rows from full_df
+    window_size = 30
+    needed_rows = len(new_rows) + window_size - 1
+    recent_data = full_df.iloc[-needed_rows:].reset_index(drop=True)
+    
+    windows = build_windows(recent_data, window_size=window_size)
 
     # Step 3: Screen + route
     _emit(callback, "ingest_progress", {"step": "screening", "pct": 50})
@@ -79,8 +86,10 @@ def run_ingest(
     poison_log = []
 
     for i, (window_df, window_text) in enumerate(windows):
-        # Compute rolling stats from full history
-        window_end_idx = len(full_df) - len(new_rows) + i + 30
+        # Compute rolling stats from full history up to the end of this window
+        # The first window (i=0) ends exactly at the first row of new_rows.
+        # The index of the first row of new_rows in full_df is len(full_df) - len(new_rows) + 1.
+        window_end_idx = len(full_df) - len(new_rows) + i + 1
         cfg = compute_rolling_stats(full_df, min(window_end_idx, len(full_df)), config)
 
         is_bad, reason = is_poisoned(window_df, cfg)

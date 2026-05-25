@@ -24,6 +24,9 @@ from app.db.init_db import create_tables
 async def lifespan(app: FastAPI):
     """Application startup and shutdown logic."""
     # Startup
+    import asyncio
+    from app.services.sse_service import set_event_loop
+    set_event_loop(asyncio.get_running_loop())
     await create_tables()
     yield
     # Shutdown

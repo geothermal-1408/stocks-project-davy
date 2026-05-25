@@ -4,6 +4,7 @@ metrics_service.py — Reads eval JSONs + cycle_history.json for metrics API.
 
 import json
 import logging
+import math
 import os
 from typing import Optional
 
@@ -14,6 +15,19 @@ from app.config import settings
 from app.models.cycle_record import CycleRecord
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_metric(val):
+    """Return None for non-finite floats (inf/nan) so JSON serialization works."""
+    if val is None:
+        return None
+    try:
+        f = float(val)
+        if math.isinf(f) or math.isnan(f):
+            return None
+        return f
+    except (TypeError, ValueError):
+        return None
 
 
 async def get_metrics(db: AsyncSession) -> dict:
@@ -61,11 +75,11 @@ async def get_metrics(db: AsyncSession) -> dict:
     # Build latest metrics — None when no data exists
     if latest_cycle:
         latest_metrics = {
-            "forget_ppl": latest_cycle.forget_ppl,
-            "retain_ppl": latest_cycle.retain_ppl,
-            "mae_validation": latest_cycle.mae_validation,
-            "directional_acc": latest_cycle.directional_acc,
-            "mia_auc": latest_cycle.mia_auc,
+            "forget_ppl": _safe_metric(latest_cycle.forget_ppl),
+            "retain_ppl": _safe_metric(latest_cycle.retain_ppl),
+            "mae_validation": _safe_metric(latest_cycle.mae_validation),
+            "directional_acc": _safe_metric(latest_cycle.directional_acc),
+            "mia_auc": _safe_metric(latest_cycle.mia_auc),
         }
         current_cycle_num = latest_cycle.cycle_num
         current_method = latest_cycle.method
@@ -80,11 +94,11 @@ async def get_metrics(db: AsyncSession) -> dict:
             latest_entry = file_history[-1]
 
         latest_metrics = {
-            "forget_ppl": latest_entry.get("forget_ppl"),
-            "retain_ppl": latest_entry.get("retain_ppl"),
-            "mae_validation": latest_entry.get("mae_validation"),
-            "directional_acc": latest_entry.get("directional_acc"),
-            "mia_auc": latest_entry.get("mia_auc"),
+            "forget_ppl": _safe_metric(latest_entry.get("forget_ppl")),
+            "retain_ppl": _safe_metric(latest_entry.get("retain_ppl")),
+            "mae_validation": _safe_metric(latest_entry.get("mae_validation")),
+            "directional_acc": _safe_metric(latest_entry.get("directional_acc")),
+            "mia_auc": _safe_metric(latest_entry.get("mia_auc")),
         } if latest_entry else {
             "forget_ppl": None, "retain_ppl": None,
             "mae_validation": None, "directional_acc": None, "mia_auc": None,
@@ -105,11 +119,11 @@ async def get_metrics(db: AsyncSession) -> dict:
              {
                 "cycle_num": c.cycle_num,
                 "method": c.method,
-                "forget_ppl": c.forget_ppl,
-                "retain_ppl": c.retain_ppl,
-                "mae_validation": c.mae_validation,
-                "directional_acc": c.directional_acc,
-                "mia_auc": c.mia_auc,
+                "forget_ppl": _safe_metric(c.forget_ppl),
+                "retain_ppl": _safe_metric(c.retain_ppl),
+                "mae_validation": _safe_metric(c.mae_validation),
+                "directional_acc": _safe_metric(c.directional_acc),
+                "mia_auc": _safe_metric(c.mia_auc),
                 "deployed": c.deployed,
                 "gate_failure": c.gate_failure,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
@@ -121,11 +135,11 @@ async def get_metrics(db: AsyncSession) -> dict:
             {
                 "cycle_num": e.get("cycle_num"),
                 "method": e.get("method"),
-                "forget_ppl": e.get("forget_ppl"),
-                "retain_ppl": e.get("retain_ppl"),
-                "mae_validation": e.get("mae_validation"),
-                "directional_acc": e.get("directional_acc"),
-                "mia_auc": e.get("mia_auc"),
+                "forget_ppl": _safe_metric(e.get("forget_ppl")),
+                "retain_ppl": _safe_metric(e.get("retain_ppl")),
+                "mae_validation": _safe_metric(e.get("mae_validation")),
+                "directional_acc": _safe_metric(e.get("directional_acc")),
+                "mia_auc": _safe_metric(e.get("mia_auc")),
                 "deployed": e.get("deployed"),
                 "gate_failure": e.get("gate_failure"),
                 "created_at": e.get("created_at"),

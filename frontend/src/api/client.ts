@@ -14,6 +14,7 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
     res = await fetch(`${BASE}${path}`, {
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': '69420',
         ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
       },
       ...opts,
@@ -44,7 +45,10 @@ export async function login(email: string, password: string) {
   try {
     res = await fetch(`${BASE}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { 
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'ngrok-skip-browser-warning': '69420'
+      },
       body: form,
     });
   } catch {
@@ -66,7 +70,10 @@ export async function register(email: string, password: string, role: string = '
   try {
     res = await fetch(`${BASE}/auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': '69420'
+      },
       body: JSON.stringify({ email, password, role }),
     });
   } catch {
@@ -120,10 +127,10 @@ export async function fetchIngestStatus() {
 }
 
 // ── Admin ──
-export async function triggerUnlearn(method = 'ascent_plus_descent', lr = 5e-6, epochs = 1) {
+export async function triggerUnlearn(method = 'ascent_plus_descent', lr = 5e-6, epochs = 1, max_steps = -1) {
   return request<any>('/admin/unlearn', {
     method: 'POST',
-    body: JSON.stringify({ method, learning_rate: lr, epochs }),
+    body: JSON.stringify({ method, learning_rate: lr, epochs, max_steps }),
   });
 }
 export async function triggerRollback(toCycle: number) {

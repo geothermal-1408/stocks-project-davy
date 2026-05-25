@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 def load_jsonl_texts(jsonl_path: str) -> list:
     """Load text entries from a JSONL file."""
+    if not os.path.exists(jsonl_path):
+        return []
     texts = []
     with open(jsonl_path, "r", encoding="utf-8") as f:
         for line in f:

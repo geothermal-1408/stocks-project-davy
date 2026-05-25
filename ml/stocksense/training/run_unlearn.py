@@ -55,6 +55,7 @@ def run_unlearn(
     positive_ratio: int = 3,
     positive_factor: float = 1.0,
     seed: int = 42,
+    max_steps: int = -1,
 ) -> str:
     """Run unlearning on stock data.
 
@@ -88,6 +89,7 @@ def run_unlearn(
     training_args = UnlearningArguments(
         output_dir=output_dir,
         num_train_epochs=epochs,
+        max_steps=max_steps,
         per_device_train_batch_size=batch_size,
         gradient_accumulation_steps=gradient_accumulation,
         learning_rate=learning_rate,
@@ -171,6 +173,13 @@ def run_unlearn(
     unlearner.save_metrics("train", metrics)
 
     logger.info(f"Unlearned model saved to {output_dir}")
+
+    # Free GPU memory
+    del model, unlearner
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    logger.info("GPU memory freed after unlearning")
+
     return output_dir
 
 

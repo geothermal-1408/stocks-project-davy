@@ -6,6 +6,7 @@ import os
 from typing import Optional
 from pydantic_settings import BaseSettings
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class Settings(BaseSettings):
     """Application configuration. All values can be overridden via env vars."""
@@ -28,10 +29,10 @@ class Settings(BaseSettings):
     INGEST_CRON: str = "0 17 * * 1-5"
 
     # --- ML Pipeline ---
-    MODEL_BASE_PATH: str = "../ml/models/Qwen1.5-0.5B"
-    OUTPUT_BASE: str = "../ml/output/stock"
-    DATA_BASE: str = "../ml/data"
-    TOKENIZED_BASE: str = "../ml/tokenized_dataset"
+    MODEL_BASE_PATH: str = os.path.join(PROJECT_ROOT, "ml", "models", "Qwen1.5-0.5B")
+    OUTPUT_BASE: str = os.path.join(PROJECT_ROOT, "ml", "output", "stock")
+    DATA_BASE: str = os.path.join(PROJECT_ROOT, "ml", "data")
+    TOKENIZED_BASE: str = os.path.join(PROJECT_ROOT, "ml", "tokenized_dataset")
 
     # --- Poison Detector ---
     POISON_SIGMA_THRESH: float = 3.0

@@ -122,10 +122,28 @@ async def inject_synthetic_poison(
             injected_df.loc[injected_df.index[-1], "high"] = (
                 injected_df["low"].iloc[-1] - 10
             )
-         # Re-generate window text from the injected DataFrame
+        elif inject_type == "price_outlier":
+            # Force close price 4 std deviations above the mean
+            mean_val = df["close"].mean()
+            std_val = df["close"].std()
+            injected_df.loc[injected_df.index[-1], "close"] = mean_val + (4.0 * std_val)
+        elif inject_type == "stale_data":
+            # Duplicate the previous day's date
+            injected_df.loc[injected_df.index[-1], "date"] = injected_df["date"].iloc[-2]
+        elif inject_type == "regime_change":
+            # Artificially alter the variance of the second half of the window to trigger Chow test
+            mid = len(injected_df) // 2
+            injected_df.loc[injected_df.index[mid:], "close"] = injected_df["close"].iloc[mid:] * 2.0
+
+        # Re-generate window text from the injected DataFrame
         injected_text = window_to_text(injected_df)
+        
         # Test detection
-        config = PoisonConfig()
+        config = PoisonConfig(regime_change_enabled=True)
+        # Compute rolling stats so price_outlier has mean/std available
+        from stocksense.data.poison_detector import compute_rolling_stats
+        config = compute_rolling_stats(df, len(df), config)
+        
         detected, reason = is_poisoned(injected_df, config)
 
         window_id = str(uuid.uuid4())
