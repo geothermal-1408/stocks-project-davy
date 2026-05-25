@@ -110,7 +110,6 @@ async def get_user_investments(
         holdings = []
     return {"user_email": email, "holdings": holdings}
 
-
 @router.get("/transactions")
 async def get_all_transactions(
     page: int = Query(1, ge=1),
