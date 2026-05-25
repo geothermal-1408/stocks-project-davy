@@ -70,9 +70,29 @@ app.include_router(investments_admin.router, tags=["admin-investments"])
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint with data source and model status."""
+    import os
+    from app.services.prediction_service import get_model_status
+
+    # Check raw CSV data exists
+    csv_path = os.path.join(settings.DATA_BASE, f"{settings.TICKER}.csv")
+    has_data = os.path.exists(csv_path)
+
+    # Check buffer files
+    forget_path = os.path.join(settings.DATA_BASE, "forget_buffer.jsonl")
+    retain_path = os.path.join(settings.DATA_BASE, "retain_buffer.jsonl")
+
+    # Model status
+    model_status = await get_model_status()
+
     return {
         "status": "healthy",
-        "model_loaded": False,  # Updated when predictor loads
-        "ingest_running": False,
+        "data": {
+            "ohlcv_available": has_data,
+            "ohlcv_path": csv_path,
+            "forget_buffer_exists": os.path.exists(forget_path),
+            "retain_buffer_exists": os.path.exists(retain_path),
+        },
+        "models": model_status,
+        "ticker": settings.TICKER,
     }

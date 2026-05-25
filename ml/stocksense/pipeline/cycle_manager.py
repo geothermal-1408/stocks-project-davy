@@ -150,11 +150,22 @@ class CycleManager:
         t0 = time.time()
         _notify(callback, "tokenizing", 10)
 
-        # --- Step 1: Tokenize buffers ---
-        forget_path = os.path.join(self.data_base, "buffers", "forget_buffer.jsonl")
-        retain_path = os.path.join(self.data_base, "buffers", "retain_buffer.jsonl")
+        # --- Step 1: Locate buffers ---
+        # Try both flat and nested buffer paths
+        forget_path = os.path.join(self.data_base, "forget_buffer.jsonl")
+        retain_path = os.path.join(self.data_base, "retain_buffer.jsonl")
 
-        if not os.path.exists(forget_path) or count_buffer("forget_buffer.jsonl", self.data_base) == 0:
+        if not os.path.exists(forget_path):
+            forget_path = os.path.join(self.data_base, "buffers", "forget_buffer.jsonl")
+        if not os.path.exists(retain_path):
+            retain_path = os.path.join(self.data_base, "buffers", "retain_buffer.jsonl")
+
+        forget_count = 0
+        if os.path.exists(forget_path):
+            with open(forget_path) as f:
+                forget_count = sum(1 for _ in f)
+
+        if forget_count == 0:
             logger.warning("No forget buffer data — skipping cycle")
             return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_forget_buffer"}
 
@@ -193,11 +204,11 @@ class CycleManager:
             max_steps=max_steps,
         )
 
-        # --- Step 4: Evaluate ---
+        # --- Step 4: Evaluate (PPL + MAE + Directional Accuracy) ---
         _notify(callback, "evaluating", 75)
-        eval_output = os.path.join(cycle_dir, "eval")
         new_metrics = Metrics()
 
+        # 4a. PPL evaluation — tokenize from JSONL on-the-fly
         try:
             from stocksense.evaluation.run_eval import evaluate_model
             tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
@@ -257,6 +268,20 @@ class CycleManager:
             gate_failure=gate_failure if not deployed else None,
             duration_sec=duration,
         )
+
+        # --- Step 7: Retrain LSTM after Qwen unlearn ---
+        try:
+            from stocksense.training.lstm_trainer import train_lstm
+            lstm_output = os.path.join(self.output_base, "lstm", "latest")
+            train_lstm(
+                data_base=self.data_base,
+                output_dir=lstm_output,
+                ticker=os.environ.get("TICKER", "AAPL"),
+                epochs=30,  # Quick retrain
+            )
+            logger.info("LSTM retrained after unlearn cycle")
+        except Exception as e:
+            logger.warning(f"LSTM retrain failed (non-blocking): {e}")
 
         _notify(callback, "complete", 100)
 
