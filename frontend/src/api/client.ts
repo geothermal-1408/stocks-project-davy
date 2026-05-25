@@ -99,6 +99,9 @@ export async function fetchMe() {
 export async function fetchPrediction(ticker = 'AAPL', samples = 10) {
   return request<any>(`/predict?ticker=${ticker}&samples=${samples}`);
 }
+export async function fetchPredictionComparison(ticker = 'AAPL') {
+  return request<any>(`/predict/comparison?ticker=${ticker}`);
+}
 
 // ── OHLCV ──
 export async function fetchOHLCV(ticker = 'AAPL', days = 90) {

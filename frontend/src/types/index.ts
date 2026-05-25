@@ -175,5 +175,6 @@ export interface PortfolioSummary {
   total_unrealised_pnl: number;
   total_unrealised_pnl_pct: number;
   holdings: Holding[];
+  pnl_history?: PortfolioPnLPoint[];
 }
 

@@ -5,6 +5,7 @@ import BufferGauge from '../components/dashboard/BufferGauge';
 import PipelineStatus from '../components/dashboard/PipelineStatus';
 import { PPLChart, MAEChart } from '../components/dashboard/Charts';
 import CycleTable from '../components/dashboard/CycleTable';
+import PoisonComparisonWidget from '../components/dashboard/PoisonComparisonWidget';
 
 export default function DashboardPage() {
   const { pipelineState } = useAppStore();
@@ -83,6 +84,8 @@ export default function DashboardPage() {
         <PPLChart history={history || []} />
         <MAEChart history={history || []} />
       </div>
+
+      <PoisonComparisonWidget />
 
       {/* Cycle table */}
       <CycleTable cycles={history || []} />

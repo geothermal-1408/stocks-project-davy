@@ -54,6 +54,7 @@ class PortfolioSummaryResponse(BaseModel):
     total_unrealised_pnl: float
     total_unrealised_pnl_pct: float
     holdings: List[HoldingResponse]
+    pnl_history: List[PnLPointResponse] = []
 
 
 class TransactionResponse(BaseModel):
