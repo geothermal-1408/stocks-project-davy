@@ -35,7 +35,7 @@ async def get_predictor():
                         if not os.path.exists(model_path):
                             model_path = "Qwen/Qwen1.5-0.5B"
 
-                    _predictor = StockPredictor(
+                    _ensemble = StockPredictor(
                         model_path=model_path,
                         n_samples=settings.PREDICTION_SAMPLES,
                         temperature=settings.PREDICTION_TEMPERATURE,

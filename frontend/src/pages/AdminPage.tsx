@@ -3,6 +3,7 @@ import { useAppStore } from '../store/appStore';
 import { useMetrics } from '../hooks/useMetrics';
 import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback } from '../api/client';
 import type { PoisonType } from '../types';
+import PoisonComparisonWidget from '../components/dashboard/PoisonComparisonWidget';
 
 const METHODS = ['AD', 'AKL', 'GA', 'RANDOM_LABEL'] as const;
 const POISON_TYPES: PoisonType[] = [
@@ -363,7 +364,11 @@ export default function AdminPage() {
             </button>
           </div>
         </div>
+        </div>
       </div>
+      
+      {/* Prediction Comparison Widget */}
+      <PoisonComparisonWidget />
 
       {/* Panel 5: Rollback (full width) */}
       <div className="bg-bg-card border border-border p-4">

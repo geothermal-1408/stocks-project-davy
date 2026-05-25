@@ -27,6 +27,10 @@ async def get_portfolio(
     total_pnl = current_value - total_invested
     pnl_pct = (total_pnl / total_invested * 100) if total_invested > 0 else 0
 
+    pnl_history = portfolio_service.generate_mock_pnl_history(
+        total_invested=total_invested, current_value=current_value
+    )
+
     return PortfolioSummaryResponse(
         total_invested=round(total_invested, 2),
         current_value=round(current_value, 2),
@@ -34,6 +38,7 @@ async def get_portfolio(
         total_unrealised_pnl=round(total_pnl, 2),
         total_unrealised_pnl_pct=round(pnl_pct, 2),
         holdings=[HoldingResponse(**h) for h in holdings],
+        pnl_history=pnl_history,
     )
 
 
