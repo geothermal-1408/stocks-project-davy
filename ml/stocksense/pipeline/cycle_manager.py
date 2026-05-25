@@ -209,8 +209,20 @@ class CycleManager:
                 )
                 new_metrics.forget_ppl = eval_results.get("forget", {}).get("ppl", 0)
                 new_metrics.retain_ppl = eval_results.get("retain", {}).get("ppl", 0)
+            else:
+                logger.info("No pre-tokenized eval data — computing PPL from buffer files")
+                new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
+                    superlearn_output, forget_path, retain_path
+                )
         except Exception as e:
             logger.warning(f"Evaluation failed: {e}")
+            # Still try the lightweight PPL fallback
+            try:
+                new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
+                    superlearn_output, forget_path, retain_path
+                )
+            except Exception as e2:
+                logger.warning(f"PPL fallback also failed: {e2}")
 
         # --- Step 5: Gate check ---
         _notify(callback, "gate_check", 90)
@@ -280,6 +292,61 @@ class CycleManager:
                     mia_auc=entry.get("mia_auc", 0.5),
                 )
         return Metrics()
+
+
+def _compute_ppl_from_buffers(
+    model_path: str, forget_path: str, retain_path: str
+) -> tuple:
+    """Compute perplexity on forget/retain buffers using the model directly.
+
+    Lightweight fallback when pre-tokenized .pt eval datasets don't exist.
+    Returns (forget_ppl, retain_ppl).
+    """
+    import math
+    import torch
+    from stocksense.utils.model_utils import load_model_and_tokenizer
+    from stocksense.data.buffer_tokenizer import tokenize_buffer
+
+    logger.info(f"Loading model from {model_path} for PPL eval")
+    model, tokenizer = load_model_and_tokenizer(model_path)
+    model.eval()
+
+    device = next(model.parameters()).device
+
+    def _calc_ppl(data_path: str) -> float:
+        if not os.path.exists(data_path):
+            return 0.0
+        dataset = tokenize_buffer(data_path, tokenizer, max_length=256)
+        if len(dataset) == 0:
+            return 0.0
+
+        total_loss = 0.0
+        count = 0
+        # Evaluate on up to 50 samples to keep it fast
+        n_samples = min(len(dataset), 50)
+        with torch.no_grad():
+            for i in range(n_samples):
+                item = dataset[i]
+                input_ids = item["input_ids"].unsqueeze(0).to(device)
+                labels = input_ids.clone()
+                outputs = model(input_ids=input_ids, labels=labels)
+                total_loss += outputs.loss.item()
+                count += 1
+
+        avg_loss = total_loss / max(count, 1)
+        return math.exp(min(avg_loss, 100))  # cap to avoid overflow
+
+    try:
+        forget_ppl = _calc_ppl(forget_path)
+        retain_ppl = _calc_ppl(retain_path)
+        logger.info(f"PPL eval: forget={forget_ppl:.2f}, retain={retain_ppl:.2f}")
+        return forget_ppl, retain_ppl
+    finally:
+        # Free GPU memory
+        del model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        logger.info("PPL eval model freed from GPU")
 
 
 def _safe_float(val) -> Optional[float]:

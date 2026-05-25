@@ -63,6 +63,17 @@ def run_finetune(
 
     logger.info(f"Training on {len(train_dataset)} samples")
 
+    if len(train_dataset) == 0:
+        logger.warning("Finetune dataset is empty. Skipping training.")
+        os.makedirs(output_dir, exist_ok=True)
+        model.save_pretrained(output_dir)
+        tokenizer.save_pretrained(output_dir)
+        # Free GPU memory
+        del model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return output_dir
+
     training_args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=epochs,
@@ -98,6 +109,12 @@ def run_finetune(
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
     logger.info(f"Model saved to {output_dir}")
+
+    # Free GPU memory
+    del model, trainer
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    logger.info("GPU memory freed after fine-tuning")
 
     return output_dir
 

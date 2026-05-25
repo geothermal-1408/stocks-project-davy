@@ -173,6 +173,13 @@ def run_unlearn(
     unlearner.save_metrics("train", metrics)
 
     logger.info(f"Unlearned model saved to {output_dir}")
+
+    # Free GPU memory
+    del model, unlearner
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    logger.info("GPU memory freed after unlearning")
+
     return output_dir
 
 
