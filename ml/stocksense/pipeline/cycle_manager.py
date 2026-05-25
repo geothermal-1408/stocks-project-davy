@@ -352,8 +352,11 @@ def _compute_ppl_from_buffers(
         with torch.no_grad():
             for i in range(n_samples):
                 item = dataset[i]
-                input_ids = item["input_ids"].unsqueeze(0).to(device)
-                labels = input_ids.clone()
+                input_ids = torch.as_tensor(item["input_ids"], device=device).unsqueeze(0)
+                if "labels" in item:
+                    labels = torch.as_tensor(item["labels"], device=device).unsqueeze(0)
+                else:
+                    labels = input_ids.clone()
                 outputs = model(input_ids=input_ids, labels=labels)
                 total_loss += outputs.loss.item()
                 count += 1
