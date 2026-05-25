@@ -24,9 +24,16 @@ async def get_predictor():
         async with _lock:
             if _predictor is None:
                 try:
+                    import os
                     from stocksense.prediction.predictor import StockPredictor
+                    model_path = settings.OUTPUT_BASE + "/current"
+                    if not os.path.exists(model_path):
+                        model_path = settings.MODEL_BASE_PATH
+                        if not os.path.exists(model_path):
+                            model_path = "Qwen/Qwen1.5-0.5B"
+
                     _predictor = StockPredictor(
-                        model_path=settings.OUTPUT_BASE + "/current",
+                        model_path=model_path,
                         n_samples=settings.PREDICTION_SAMPLES,
                         temperature=settings.PREDICTION_TEMPERATURE,
                     )

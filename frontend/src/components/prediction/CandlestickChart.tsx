@@ -134,6 +134,14 @@ export default function CandlestickChart({ data, poisonAnnotations, predictionCa
     }
   }, [dimensions.width, allData.length, data.length]);
 
+  if (data.length === 0 && !predictionCandle) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-text-muted font-mono" style={{ minHeight: 400 }}>
+        No chart data available
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className="w-full h-full relative" style={{ minHeight: 400 }}>
       <svg

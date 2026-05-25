@@ -65,10 +65,15 @@ async def require_admin(
     user: Optional[dict] = Depends(get_current_user),
 ) -> dict:
     """Require admin authentication."""
-    if not user or user.get("role") != "admin":
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required (invalid or missing token)",
+        )
+    if user.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
+            detail=f"Admin access required. Your role is: {user.get('role')}",
         )
     return user
 

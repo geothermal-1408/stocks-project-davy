@@ -7,14 +7,14 @@
  */
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '../store/appStore';
-import { createEventSource } from '../api/client';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 
-const MAX_RECONNECT_DELAY = 30_000; // 30s max backoff
-const INITIAL_RECONNECT_DELAY = 1_000; // 1s initial
+const MAX_RECONNECT_DELAY = 30_000;
+const INITIAL_RECONNECT_DELAY = 1_000;
 
 export function usePipelineStream() {
   const { setPipelineState, triggerPoisonFlash } = useAppStore();
-  const esRef = useRef<EventSource | null>(null);
+  const abortCtrlRef = useRef<AbortController | null>(null);
   const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -23,72 +23,60 @@ export function usePipelineStream() {
 
     function connect() {
       if (unmounted) return;
+      
+      const abortCtrl = new AbortController();
+      abortCtrlRef.current = abortCtrl;
 
-      let es: EventSource;
-      try {
-        es = createEventSource();
-        esRef.current = es;
-      } catch {
-        // Backend not available — schedule reconnect
-        scheduleReconnect();
-        return;
-      }
-
-      es.addEventListener('open', () => {
-        // Reset backoff on successful connection
-        reconnectDelay.current = INITIAL_RECONNECT_DELAY;
-      });
-
-      es.addEventListener('ingest_start', (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        setPipelineState({ status: 'ingesting', ticker: data.ticker, progress: 0 });
-      });
-
-      es.addEventListener('ingest_progress', (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        setPipelineState({
-          status: 'ingesting',
-          ticker: data.ticker,
-          progress: data.pct,
-        });
-      });
-
-      es.addEventListener('poison_detected', (_e: MessageEvent) => {
-        triggerPoisonFlash();
-      });
-
-      es.addEventListener('ingest_complete', (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        if (data.cycle_triggered) {
-          setPipelineState({ status: 'unlearning' });
-        } else {
-          setPipelineState({ status: 'idle' });
+      fetchEventSource('/api/stream/events', {
+        signal: abortCtrl.signal,
+        headers: {
+          'ngrok-skip-browser-warning': '69420',
+        },
+        async onopen(res) {
+          if (res.ok && res.headers.get('content-type')?.includes('text/event-stream')) {
+            reconnectDelay.current = INITIAL_RECONNECT_DELAY;
+            return;
+          }
+        },
+        onmessage(e) {
+          if (e.event === 'ingest_start') {
+            const data = JSON.parse(e.data);
+            setPipelineState({ status: 'ingesting', ticker: data.ticker, progress: 0 });
+          } else if (e.event === 'ingest_progress') {
+            const data = JSON.parse(e.data);
+            setPipelineState({ status: 'ingesting', ticker: data.ticker, progress: data.pct });
+          } else if (e.event === 'poison_detected') {
+            triggerPoisonFlash();
+          } else if (e.event === 'ingest_complete') {
+            const data = JSON.parse(e.data);
+            if (data.cycle_triggered) {
+              setPipelineState({ status: 'unlearning' });
+            } else {
+              setPipelineState({ status: 'idle' });
+            }
+          } else if (e.event === 'cycle_progress') {
+            const data = JSON.parse(e.data);
+            setPipelineState({ status: 'unlearning', progress: data.pct, method: data.step });
+          } else if (e.event === 'cycle_complete') {
+            setPipelineState({ status: 'idle' });
+          }
+        },
+        onclose() {
+          scheduleReconnect();
+        },
+        onerror() {
+          scheduleReconnect();
+          return;
         }
+      }).catch(() => {
+        // Ignored
       });
-
-      es.addEventListener('cycle_progress', (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        setPipelineState({
-          status: 'unlearning',
-          progress: data.pct,
-          method: data.step,
-        });
-      });
-
-      es.addEventListener('cycle_complete', (_e: MessageEvent) => {
-        setPipelineState({ status: 'idle' });
-      });
-
-      es.onerror = () => {
-        // SSE disconnected — close and schedule reconnect
-        es.close();
-        esRef.current = null;
-        scheduleReconnect();
-      };
     }
 
     function scheduleReconnect() {
       if (unmounted) return;
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      
       reconnectTimer.current = setTimeout(() => {
         reconnectDelay.current = Math.min(
           reconnectDelay.current * 2,
@@ -102,9 +90,9 @@ export function usePipelineStream() {
 
     return () => {
       unmounted = true;
-      if (esRef.current) {
-        esRef.current.close();
-        esRef.current = null;
+      if (abortCtrlRef.current) {
+        abortCtrlRef.current.abort();
+        abortCtrlRef.current = null;
       }
       if (reconnectTimer.current) {
         clearTimeout(reconnectTimer.current);
