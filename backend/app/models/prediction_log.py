@@ -16,7 +16,7 @@ class PredictionLog(Base):
         String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
     ticker: Mapped[str] = mapped_column(String, nullable=False)
-    pred_date: Mapped[date] = mapped_column(Date, nullable=False)
+    pred_date: Mapped[date] = mapped_column(Date, nullable=True)
     pred_open: Mapped[float] = mapped_column(Numeric(12, 4), nullable=True)
     pred_high: Mapped[float] = mapped_column(Numeric(12, 4), nullable=True)
     pred_low: Mapped[float] = mapped_column(Numeric(12, 4), nullable=True)
@@ -28,6 +28,7 @@ class PredictionLog(Base):
     mae: Mapped[float] = mapped_column(Numeric(10, 6), nullable=True)
     directional_correct: Mapped[bool] = mapped_column(Boolean, nullable=True)
     model_cycle: Mapped[int] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String, nullable=True, default="unknown")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

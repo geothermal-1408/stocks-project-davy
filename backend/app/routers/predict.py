@@ -1,5 +1,7 @@
 """Prediction API endpoints."""
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Query, Depends
@@ -71,15 +73,61 @@ async def get_predict_comparison(
 async def predict(
     ticker: str = Query("AAPL", description="Stock ticker"),
     samples: int = Query(10, description="Number of temperature samples"),
+    db: AsyncSession = Depends(get_db),
 ):
     """Generate next-day OHLCV prediction with confidence bands."""
-    return await prediction_service.predict(ticker, samples)
+    result = await prediction_service.predict(ticker, samples)
+
+    # Log prediction to DB for comparison widget
+    if result and not result.get("error"):
+        try:
+            pred = result.get("prediction", {})
+            log_entry = PredictionLog(
+                ticker=ticker,
+                pred_close=pred.get("close"),
+                pred_open=pred.get("open"),
+                pred_high=pred.get("high"),
+                pred_low=pred.get("low"),
+                pred_vol=pred.get("vol"),
+                model_cycle=result.get("model_cycle", -1),
+                source=result.get("source", "unknown"),
+            )
+            db.add(log_entry)
+            await db.commit()
+        except Exception as e:
+            # Never let logging failure break the prediction response
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to log prediction: {e}")
+
+    return result
 
 
 @router.get("/predict/{ticker}")
 async def predict_ticker(
     ticker: str,
     samples: int = Query(10),
+    db: AsyncSession = Depends(get_db),
 ):
     """Multi-ticker prediction endpoint."""
-    return await prediction_service.predict(ticker, samples)
+    result = await prediction_service.predict(ticker, samples)
+
+    # Log prediction to DB
+    if result and not result.get("error"):
+        try:
+            pred = result.get("prediction", {})
+            log_entry = PredictionLog(
+                ticker=ticker,
+                pred_close=pred.get("close"),
+                pred_open=pred.get("open"),
+                pred_high=pred.get("high"),
+                pred_low=pred.get("low"),
+                pred_vol=pred.get("vol"),
+                model_cycle=result.get("model_cycle", -1),
+                source=result.get("source", "unknown"),
+            )
+            db.add(log_entry)
+            await db.commit()
+        except Exception:
+            pass
+
+    return result

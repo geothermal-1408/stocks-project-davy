@@ -72,18 +72,22 @@ app.include_router(investments_admin.router, tags=["admin-investments"])
 async def health_check():
     """Health check endpoint with data source and model status."""
     import os
-    from app.services.prediction_service import get_model_status
 
-    # Check raw CSV data exists
-    csv_path = os.path.join(settings.DATA_BASE, f"{settings.TICKER}.csv")
+    # Check raw CSV data exists (correct path: raw/ticker_raw.csv)
+    csv_path = os.path.join(settings.DATA_BASE, "raw", f"{settings.TICKER.lower()}_raw.csv")
     has_data = os.path.exists(csv_path)
 
     # Check buffer files
-    forget_path = os.path.join(settings.DATA_BASE, "forget_buffer.jsonl")
-    retain_path = os.path.join(settings.DATA_BASE, "retain_buffer.jsonl")
+    forget_path = os.path.join(settings.DATA_BASE, "buffers", "forget_buffer.jsonl")
+    retain_path = os.path.join(settings.DATA_BASE, "buffers", "retain_buffer.jsonl")
 
-    # Model status
-    model_status = await get_model_status()
+    # Model status — never crash the health endpoint
+    model_status = {"lstm_loaded": False, "qwen_loaded": False}
+    try:
+        from app.services.prediction_service import get_model_status
+        model_status = await get_model_status()
+    except Exception as e:
+        model_status["error"] = str(e)
 
     return {
         "status": "healthy",
@@ -96,3 +100,4 @@ async def health_check():
         "models": model_status,
         "ticker": settings.TICKER,
     }
+

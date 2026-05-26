@@ -147,11 +147,26 @@ async def get_metrics(db: AsyncSession) -> dict:
             for e in file_history
         ]
 
+    # Get last ingest time from DB
+    last_ingest = None
+    try:
+        from app.models.ingest_job import IngestJob
+        ingest_res = await db.execute(
+            select(IngestJob).order_by(desc(IngestJob.started_at)).limit(1)
+        )
+        last_job = ingest_res.scalar_one_or_none()
+        if last_job and last_job.started_at:
+            last_ingest = last_job.started_at.isoformat()
+    except Exception:
+        pass
+
     return {
         "current_cycle": current_cycle_num,
         "method": current_method,
         "latest": latest_metrics,
         "history": history_list,
+        "last_ingest": last_ingest,
+        "next_ingest": None,  # Would be populated by APScheduler if running
         "buffer_status": {
             "forget_count": forget_count,
             "retain_count": retain_count,
@@ -181,14 +196,23 @@ async def get_ohlcv_data(
 ) -> dict:
     """Get OHLCV data with poison annotations."""
     import asyncio
+    import pandas as pd
 
+    df = pd.DataFrame()
     try:
         from stocksense.data.ingestion import load_raw_csv
+        df = await asyncio.to_thread(load_raw_csv, ticker, settings.DATA_BASE)
     except ImportError:
-        logger.warning("stocksense.data.ingestion not available")
-        return {"ticker": ticker, "data": [], "poison_annotations": []}
-
-    df = await asyncio.to_thread(load_raw_csv, ticker, settings.DATA_BASE)
+        # Fallback: load CSV directly
+        csv_path = os.path.join(settings.DATA_BASE, "raw", f"{ticker.lower()}_raw.csv")
+        if os.path.exists(csv_path):
+            try:
+                df = pd.read_csv(csv_path, parse_dates=["date"])
+                df["date"] = pd.to_datetime(df["date"]).dt.date
+            except Exception as e:
+                logger.warning(f"Failed to load CSV: {e}")
+        else:
+            logger.warning(f"No OHLCV CSV found at {csv_path}")
 
     if df.empty:
         return {"ticker": ticker, "data": [], "poison_annotations": []}
