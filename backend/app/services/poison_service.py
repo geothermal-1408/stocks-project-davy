@@ -58,11 +58,18 @@ async def log_poison_event(
 
     Poison events are immutable — they are the audit trail.
     """
+    def _parse_date(d):
+        if isinstance(d, str):
+            return datetime.strptime(d[:10], "%Y-%m-%d").date()
+        if hasattr(d, "date"):
+            return d.date()
+        return d
+
     event = PoisonEvent(
         id=str(uuid.uuid4()),
         ticker=ticker,
-        window_start=str(window_start),
-        window_end=str(window_end),
+        window_start=_parse_date(window_start),
+        window_end=_parse_date(window_end),
         poison_type=poison_type,
         reason=reason,
         sigma=sigma,

@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     FINETUNE_EPOCHS: int = 1
 
     # --- Prediction ---
-    PREDICTION_SAMPLES: int = 10
+    PREDICTION_SAMPLES: int = 2
     PREDICTION_TEMPERATURE: float = 0.7
 
     # --- Misc ---

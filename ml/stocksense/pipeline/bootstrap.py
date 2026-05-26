@@ -13,6 +13,10 @@ import json
 import logging
 import os
 import sys
+
+# Add the ml directory to sys.path so 'stocksense' module can be imported
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -20,10 +24,12 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def bootstrap(
     ticker: str = "AAPL",
-    data_base: str = "./data",
-    output_base: str = "./output/stock",
+    data_base: str = os.path.join(PROJECT_ROOT, "data"),
+    output_base: str = os.path.join(PROJECT_ROOT, "output", "stock"),
     fetch_period: str = "2y",
     window_size: int = 30,
     lstm_epochs: int = 50,
@@ -47,8 +53,12 @@ def bootstrap(
     # ── Step 1: Fetch OHLCV ──────────────────────────────────────────────
     logger.info(f"Step 1: Fetching {ticker} OHLCV ({fetch_period})")
     try:
-        from stocksense.data.ingestion import fetch_and_save_ohlcv
-        csv_path = fetch_and_save_ohlcv(ticker, data_base, period=fetch_period)
+        from stocksense.data.ingestion import fetch_ohlcv, update_raw_csv
+        df_new = fetch_ohlcv(ticker, period=fetch_period)
+        if df_new.empty:
+            raise ValueError(f"No data returned for {ticker}")
+        update_raw_csv(ticker, df_new, data_base)
+        csv_path = os.path.join(data_base, "raw", f"{ticker.lower()}_raw.csv")
         results["fetch"] = {"status": "ok", "path": csv_path}
     except Exception as e:
         logger.error(f"Fetch failed: {e}")
@@ -116,7 +126,7 @@ def bootstrap(
         )
         results["lstm_training"] = train_result
     except Exception as e:
-        logger.error(f"LSTM training failed: {e}")
+        logger.exception("LSTM training failed")
         results["lstm_training"] = {"status": "error", "error": str(e)}
 
     # ── Step 6: Create directory structure ────────────────────────────────
@@ -147,8 +157,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Bootstrap StockSense ML pipeline")
     parser.add_argument("--ticker", default="AAPL")
-    parser.add_argument("--data_base", default="./data")
-    parser.add_argument("--output_base", default="./output/stock")
+    parser.add_argument("--data_base", default=os.path.join(PROJECT_ROOT, "data"))
+    parser.add_argument("--output_base", default=os.path.join(PROJECT_ROOT, "output", "stock"))
     parser.add_argument("--period", default="2y")
     parser.add_argument("--epochs", type=int, default=50)
     args = parser.parse_args()

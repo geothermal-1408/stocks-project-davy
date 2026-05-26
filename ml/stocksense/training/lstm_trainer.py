@@ -8,6 +8,9 @@ Saves model checkpoints + scaler parameters.
 import json
 import logging
 import os
+import sys
+# Add the ml directory to sys.path so 'stocksense' module can be imported
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import time
 from typing import Optional
 

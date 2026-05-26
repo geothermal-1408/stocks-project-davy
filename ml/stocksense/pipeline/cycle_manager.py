@@ -15,6 +15,8 @@ import json
 import logging
 import os
 import time
+# Add the ml directory to sys.path so 'stocksense' module can be imported
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
