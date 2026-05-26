@@ -43,10 +43,12 @@ class AdvSupervisedDataset(Dataset):
             self.attention_mask.append(neg["attention_mask"][i])
             self.factor.append(-1)
 
-            self.input_ids.extend(pos["input_ids"][i * pr : (i + 1) * pr])
+            pos_chunk = pos["input_ids"][i * pr : (i + 1) * pr]
+            pos_chunk_len = len(pos_chunk)
+            self.input_ids.extend(pos_chunk)
             self.labels.extend(pos["labels"][i * pr : (i + 1) * pr])
             self.attention_mask.extend(pos["attention_mask"][i * pr : (i + 1) * pr])
-            self.factor.extend([data_args.positive_factor] * pr)
+            self.factor.extend([data_args.positive_factor] * pos_chunk_len)
 
     def __len__(self):
         return len(self.input_ids)

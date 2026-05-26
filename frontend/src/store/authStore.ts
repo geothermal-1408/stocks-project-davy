@@ -63,7 +63,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': '69420'
+        },
         body: JSON.stringify({ email, password, role }),
       });
       if (!res.ok) {

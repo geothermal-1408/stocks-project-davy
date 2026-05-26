@@ -274,3 +274,54 @@ async def get_transaction_history(
         }
         for tx in txs
     ]
+
+
+def generate_mock_pnl_history(
+    total_invested: float, current_value: float, days: int = 30
+) -> List[dict]:
+    """Generate a simulated historical P&L curve for chart rendering.
+    
+    Gradually interpolates from a slightly lower starting value up to the current value,
+    adding some noise to simulate daily market movements.
+    """
+    from datetime import datetime, timedelta, timezone
+    import random
+    
+    if total_invested <= 0 and current_value <= 0:
+        return []
+
+    history = []
+    now = datetime.now(timezone.utc)
+    
+    # Start the history near the invested amount, but let it grow to current_value
+    # to show the P&L trend.
+    start_value = total_invested if total_invested > 0 else current_value * 0.8
+    
+    value_step = (current_value - start_value) / days
+    
+    current_simulated_value = start_value
+    
+    for i in range(days):
+        point_date = now - timedelta(days=(days - i - 1))
+        
+        # Add random noise (-1% to +1%)
+        noise = current_simulated_value * random.uniform(-0.01, 0.01)
+        
+        # For the last day, snap exactly to the true current_value
+        if i == days - 1:
+            point_value = current_value
+        else:
+            point_value = current_simulated_value + noise
+            
+        pnl = point_value - total_invested
+        
+        history.append({
+            "date": point_date.strftime("%Y-%m-%d"),
+            "portfolio_value": round(point_value, 2),
+            "total_invested": round(total_invested, 2),
+            "pnl": round(pnl, 2),
+        })
+        
+        current_simulated_value += value_step
+        
+    return history

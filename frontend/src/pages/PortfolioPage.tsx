@@ -107,7 +107,7 @@ export default function PortfolioPage() {
       </div>
 
       {/* P&L chart */}
-      <PortfolioChart data={[]} predictedValue={portfolio?.predicted_value} />
+      <PortfolioChart data={portfolio?.pnl_history || []} predictedValue={portfolio?.predicted_value} />
 
       {/* Transaction history */}
       <div className="bg-bg-card border border-border p-4">

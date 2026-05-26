@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useMetrics } from '../hooks/useMetrics';
 import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback } from '../api/client';
 import type { PoisonType } from '../types';
+import PoisonComparisonWidget from '../components/dashboard/PoisonComparisonWidget';
 
 const METHODS = ['AD', 'AKL', 'GA', 'RANDOM_LABEL'] as const;
 const POISON_TYPES: PoisonType[] = [
@@ -11,21 +12,35 @@ const POISON_TYPES: PoisonType[] = [
 ];
 
 export default function AdminPage() {
-  const { config, setConfig, setPipelineState } = useAppStore();
+  const { config, setConfig, pipelineState, setPipelineState } = useAppStore();
   const [selectedMethod, setSelectedMethod] = useState<string>('AD');
   const [fetchTicker, setFetchTicker] = useState('AAPL');
   const [injectType, setInjectType] = useState<string>('flash_crash');
   const [injectTicker, setInjectTicker] = useState('AAPL');
   const [injectSeverity, setInjectSeverity] = useState(3);
-  const [isUnlearning, setIsUnlearning] = useState(false);
-  const [unlearnProgress, setUnlearnProgress] = useState(0);
+  // Track whether WE triggered the cycle (to show the button state correctly)
+  const [cycleTriggered, setCycleTriggered] = useState(false);
 
   const severityLabels = ['subtle', 'moderate', 'severe', 'extreme', 'nuclear'];
 
   const [_fetchStatus, setFetchStatus] = useState<string | null>(null);
   const [injectResult, setInjectResult] = useState<string | null>(null);
   const [_rollbackStatus, setRollbackStatus] = useState<string | null>(null);
-  const { metrics } = useMetrics();
+  const { metrics, refresh: refetchMetrics } = useMetrics();
+
+  // Derive unlearning state from the shared store (updated by SSE events)
+  const isUnlearning = pipelineState.status === 'unlearning' || cycleTriggered;
+  const unlearnProgress = pipelineState.status === 'unlearning' ? (pipelineState.progress ?? 0) : 0;
+
+  // Reset local trigger flag when pipeline goes idle (cycle finished)
+  const prevStatus = useRef(pipelineState.status);
+  useEffect(() => {
+    if (prevStatus.current === 'unlearning' && pipelineState.status === 'idle') {
+      setCycleTriggered(false);
+      refetchMetrics();
+    }
+    prevStatus.current = pipelineState.status;
+  }, [pipelineState.status, refetchMetrics]);
 
   const handleFetch = async () => {
     setPipelineState({ status: 'ingesting', ticker: fetchTicker, progress: 0, total: 30 });
@@ -38,16 +53,19 @@ export default function AdminPage() {
       setPipelineState({ status: 'idle' });
     }
   };
+  const [devMode, setDevMode] = useState(false);
 
   const handleTriggerCycle = async () => {
-    setIsUnlearning(true);
-    setUnlearnProgress(0);
-    setPipelineState({ status: 'unlearning', cycle: (metrics.current_cycle || 7) + 1, method: selectedMethod.toLowerCase(), epoch: '1/1' });
+    setCycleTriggered(true);
+    const stepsForMode = devMode ? 10 : -1;
+    setPipelineState({ status: 'unlearning', progress: 0, cycle: (metrics.current_cycle || 7) + 1, method: selectedMethod.toLowerCase(), epoch: '1/1' });
     try {
       const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'akl', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
-      await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent');
+      await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent', 5e-6, 1, stepsForMode);
+      // Note: the HTTP call returns immediately (background task).
+      // Progress will be updated via SSE events → pipelineState.
     } catch {
-      setIsUnlearning(false);
+      setCycleTriggered(false);
       setPipelineState({ status: 'idle' });
     }
   };
@@ -113,6 +131,17 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
+          <label className="flex items-center gap-2 mb-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={devMode}
+              onChange={e => setDevMode(e.target.checked)}
+              className="accent-accent-warning"
+            />
+            <span className="font-mono text-[10px] text-accent-warning uppercase">
+              DEV MODE (10 steps only — ~30s)
+            </span>
+          </label>
           <button
             onClick={handleTriggerCycle}
             disabled={isUnlearning}
@@ -335,7 +364,11 @@ export default function AdminPage() {
             </button>
           </div>
         </div>
+        </div>
       </div>
+      
+      {/* Prediction Comparison Widget */}
+      <PoisonComparisonWidget />
 
       {/* Panel 5: Rollback (full width) */}
       <div className="bg-bg-card border border-border p-4">
@@ -355,10 +388,15 @@ export default function AdminPage() {
                 <span className="text-text-primary">CYCLE {cycle.cycle_num}</span>
                 <span className="text-text-muted">{cycle.date}</span>
                 <span className="text-text-muted">{cycle.method}</span>
-                <span className="text-text-muted">MAE {cycle.mae_validation.toFixed(2)}</span>
-                {cycle.cycle_num === 7 && (
+                <span className="text-text-muted">MAE {cycle.mae_validation?.toFixed(2) ?? '—'}</span>
+                {cycle.deployed && (
                   <span className="px-1.5 py-0.5 border border-accent-mint text-accent-mint text-[10px]">
                     → ACTIVE
+                  </span>
+                )}
+                {cycle.gate_failure && (
+                  <span className="px-1.5 py-0.5 border border-accent-danger/50 text-accent-danger text-[10px]">
+                    ✗ {cycle.gate_failure}
                   </span>
                 )}
               </div>

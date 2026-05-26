@@ -56,11 +56,11 @@ export default function CycleTable({ cycles }: Props) {
                   {cycle.method.toUpperCase()}
                 </span>
               </span>
-              <span className="text-text-primary">{cycle.forget_ppl.toFixed(1)}</span>
-              <span className="text-text-primary">{cycle.retain_ppl.toFixed(1)}</span>
-              <span className="text-text-primary">{cycle.mae_validation.toFixed(2)}</span>
-              <span className={cycle.directional_acc >= 0.52 ? 'text-accent-mint' : 'text-accent-danger'}>
-                {(cycle.directional_acc * 100).toFixed(1)}%
+              <span className="text-text-primary">{cycle.forget_ppl?.toFixed(1) ?? '—'}</span>
+              <span className="text-text-primary">{cycle.retain_ppl?.toFixed(1) ?? '—'}</span>
+              <span className="text-text-primary">{cycle.mae_validation?.toFixed(2) ?? '—'}</span>
+              <span className={cycle.directional_acc && cycle.directional_acc >= 0.52 ? 'text-accent-mint' : cycle.directional_acc ? 'text-accent-danger' : 'text-text-muted'}>
+                {cycle.directional_acc ? `${(cycle.directional_acc * 100).toFixed(1)}%` : '—'}
               </span>
               <span>
                 <span

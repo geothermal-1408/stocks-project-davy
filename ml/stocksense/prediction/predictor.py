@@ -52,8 +52,11 @@ class StockPredictor:
 
     def _load_model(self, force: bool = False) -> None:
         """Load or reload the model."""
-        # Resolve symlink
-        real_path = os.path.realpath(self.model_path)
+        # Resolve symlink only if it's a local path
+        if self.model_path.startswith(".") or self.model_path.startswith("/") or self.model_path.startswith("~"):
+            real_path = os.path.realpath(self.model_path)
+        else:
+            real_path = self.model_path
 
         if not force and self._loaded_path == real_path and self._model is not None:
             return

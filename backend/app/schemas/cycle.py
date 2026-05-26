@@ -28,6 +28,7 @@ class UnlearnRequest(BaseModel):
     method: str = "ascent_plus_descent"
     learning_rate: float = 5e-6
     epochs: int = 1
+    max_steps: int = -1  # Set to e.g. 10 for fast dev testing
 
 
 class RollbackRequest(BaseModel):
