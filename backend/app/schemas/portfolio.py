@@ -47,6 +47,13 @@ class HoldingResponse(BaseModel):
     created_at: Optional[str] = None
 
 
+class PnLPointResponse(BaseModel):
+    date: str
+    portfolio_value: float
+    total_invested: float
+    pnl: float
+
+
 class PortfolioSummaryResponse(BaseModel):
     total_invested: float
     current_value: float
@@ -54,6 +61,7 @@ class PortfolioSummaryResponse(BaseModel):
     total_unrealised_pnl: float
     total_unrealised_pnl_pct: float
     holdings: List[HoldingResponse]
+    pnl_history: List[PnLPointResponse] = []
 
 
 class TransactionResponse(BaseModel):
@@ -65,13 +73,6 @@ class TransactionResponse(BaseModel):
     units: float
     price_at_time: float
     created_at: Optional[str] = None
-
-
-class PnLPointResponse(BaseModel):
-    date: str
-    portfolio_value: float
-    total_invested: float
-    pnl: float
 
 
 # ── Admin schemas ────────────────────────────────────────────────────────
