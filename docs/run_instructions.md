@@ -85,11 +85,11 @@ If you only want to use the LSTM and Statistical models, you don't need a GPU! Y
 
 If you want to use the NLP-based Qwen model with Unlearning capabilities, you'll need a GPU. Colab's free T4 GPU is perfect for this.
 
-1. Zip the `ml/` directory and upload it to your Google Drive, or clone your GitHub repo directly into Colab.
+1. Zip the `backend/` and `ml/` directories and upload them to your Google Drive, or clone your GitHub repo directly into Colab.
 2. Open a new Colab Notebook and set the Runtime to **T4 GPU**.
 3. Install the requirements:
    ```python
-   !pip install -r ml/requirements.txt
+   !pip install -e backend/
    ```
 4. **Run the ingestion and window building**:
    ```python
@@ -109,8 +109,7 @@ If you want to run the full FastAPI backend alongside the ML models in Colab (to
 1. Zip the entire `backend/` and `ml/` folders and upload them to Colab (or clone your GitHub repo in Colab).
 2. Install all requirements and `localtunnel`:
    ```python
-   !pip install -r backend/requirements.txt
-   !pip install -r ml/requirements.txt
+   !pip install -e backend/
    !npm install -g localtunnel
    ```
 3. First, bootstrap the data and train the models as outlined in Option B (Steps 4 and 5).

@@ -37,6 +37,9 @@ docs/explain.md
 ml/models/Qwen1.5-0.5B
 #ml/stocksense/method/__pycache__/
 #ml/stocksense/training/__pycache__/
+ml/stocksense/method/__pycache__/
+ml/stocksense/training/__pycache__/
+docs/run_instructions.md
 ml/stocksense/pipeline/output/stock
 #ml/stocksense/pipeline/data
 ml/output/stock/lstm
