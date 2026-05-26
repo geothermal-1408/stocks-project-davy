@@ -74,6 +74,17 @@ def run_finetune(
             torch.cuda.empty_cache()
         return output_dir
 
+    def _supports_tf32() -> bool:
+        if not torch.cuda.is_available():
+            return False
+        return torch.cuda.get_device_capability(0)[0] >= 8
+
+    auto_fp16 = False
+    auto_bf16 = False
+    if torch.cuda.is_available():
+        auto_fp16 = not _supports_tf32()
+        auto_bf16 = _supports_tf32()
+
     training_args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=epochs,
@@ -84,7 +95,8 @@ def run_finetune(
         warmup_ratio=0.03,
         lr_scheduler_type="cosine",
         weight_decay=0.0,
-        fp16=fp16,
+        fp16=auto_fp16,
+        bf16=auto_bf16,
         save_strategy="no",
         logging_steps=10,
         report_to="none",

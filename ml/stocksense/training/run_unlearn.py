@@ -83,8 +83,11 @@ def run_unlearn(
     model, tokenizer = load_model_and_tokenizer(model_path)
 
     # Configure training args
-    fp16 = not _supports_tf32()
-    bf16 = _supports_tf32()
+    fp16 = False
+    bf16 = False
+    if torch.cuda.is_available():
+        fp16 = not _supports_tf32()
+        bf16 = _supports_tf32()
 
     training_args = UnlearningArguments(
         output_dir=output_dir,
