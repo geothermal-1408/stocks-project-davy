@@ -19,6 +19,9 @@ ml/stocksense/utils/__pycache__/
 ml/stocksense/venv/
 ml/stocksense/prediction/__pycache__/
 ml/stocksense/pipeline/__pycache__/
+ml/stocksense/training/__pycache__/
+ml/stocksense/method/__pycache__/
+
 backend/stocksense.db
 .env
 st.md
@@ -32,8 +35,9 @@ stocks.md
 docs/deployement.md
 docs/explain.md
 ml/models/Qwen1.5-0.5B
-ml/stocksense/method/__pycache__/
-ml/stocksense/training/__pycache__/
+#ml/stocksense/method/__pycache__/
+#ml/stocksense/training/__pycache__/
 ml/stocksense/pipeline/output/stock
-ml/stocksense/pipeline/data
-ml/output/stock
+#ml/stocksense/pipeline/data
+ml/output/stock/lstm
+
