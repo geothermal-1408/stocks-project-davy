@@ -1,0 +1,156 @@
+Adjusting model directory structure...
+
+🚀 Public URL: https://19d9-34-186-6-68.ngrok-free.app
+
+INFO:     Started server process [3742]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "POST /auth/register HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights: 100%
+ 291/291 [00:00<00:00, 732.69it/s, Materializing param=model.norm.weight]
+The tied weights mapping and config for this model specifies to tie model.embed_tokens.weight to lm_head.weight, but both are present in the checkpoints, so we will NOT tie them. You should update the config with `tie_word_embeddings=False` to silence this warning
+INFO:     13.71.3.96:0 - "GET /data/ohlcv?ticker=AAPL&days=90 HTTP/1.1" 200 OK
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+INFO:     13.71.3.96:0 - "GET /predict?ticker=AAPL&samples=10 HTTP/1.1" 200 OK
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:151643 for open-end generation.
+INFO:     13.71.3.96:0 - "GET /predict?ticker=AAPL&samples=10 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /poison/log?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /poison/log?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /poison/log?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /poison/log?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /predict/comparison?ticker=AAPL HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "POST /admin/inject-poison HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "POST /admin/unlearn HTTP/1.1" 200 OK
+Loading weights: 100%
+ 291/291 [00:00<00:00, 688.45it/s, Materializing param=model.norm.weight]
+The tied weights mapping and config for this model specifies to tie model.embed_tokens.weight to lm_head.weight, but both are present in the checkpoints, so we will NOT tie them. You should update the config with `tie_word_embeddings=False` to silence this warning
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+warmup_ratio is deprecated and will be removed in v5.2. Use `warmup_steps` instead.
+Tokenizing buffer: 100%
+ 159/159 [00:00<00:00, 336.37 examples/s]
+Adding labels: 100%
+ 1113/1113 [00:00<00:00, 1241.13 examples/s]
+Tokenizing buffer: 100%
+ 332/332 [00:01<00:00, 239.29 examples/s]
+Adding labels: 100%
+ 2324/2324 [00:01<00:00, 1255.67 examples/s]
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+Formatting inputs...
+100%|██████████| 1113/1113 [00:00<00:00, 470164.20it/s]
+ [10/10 00:11, Epoch 0/1]
+Step	Training Loss
+10	2.478992
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+Writing model shards: 100%
+ 1/1 [00:58<00:00, 58.60s/it]
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+***** train metrics *****
+  epoch                    =     0.0233
+  total_flos               =    53099GF
+  train_loss               =      2.479
+  train_runtime            = 0:00:12.87
+  train_samples            =       3437
+  train_samples_per_second =      6.212
+  train_steps_per_second   =      0.776
+Loading weights: 100%
+ 291/291 [00:00<00:00, 636.71it/s, Materializing param=model.norm.weight]
+The tied weights mapping and config for this model specifies to tie model.embed_tokens.weight to lm_head.weight, but both are present in the checkpoints, so we will NOT tie them. You should update the config with `tie_word_embeddings=False` to silence this warning
+Tokenizing buffer: 100%
+ 332/332 [00:01<00:00, 271.55 examples/s]
+Adding labels: 100%
+ 2324/2324 [00:01<00:00, 1254.44 examples/s]
+warmup_ratio is deprecated and will be removed in v5.2. Use `warmup_steps` instead.
+ [10/10 00:11, Epoch 0/1]
+Step	Training Loss
+10	0.752545
+Writing model shards: 100%
+ 1/1 [00:15<00:00, 15.96s/it]
+Loading weights: 100%
+ 291/291 [00:00<00:00, 677.90it/s, Materializing param=model.norm.weight]
+The tied weights mapping and config for this model specifies to tie model.embed_tokens.weight to lm_head.weight, but both are present in the checkpoints, so we will NOT tie them. You should update the config with `tie_word_embeddings=False` to silence this warning
+Tokenizing buffer: 100%
+ 159/159 [00:00<00:00, 339.35 examples/s]
+Adding labels: 100%
+ 1113/1113 [00:00<00:00, 1215.76 examples/s]
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /stream/events HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+Tokenizing buffer: 100%
+ 332/332 [00:01<00:00, 183.43 examples/s]
+Adding labels: 100%
+ 2324/2324 [00:01<00:00, 1220.56 examples/s]
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     13.71.3.96:0 - "GET /metrics HTTP/1.1" 200 OK
+WARNING:stocksense.pipeline.cycle_manager:Prediction evaluation failed: evaluate_predictions() missing 1 required positional argument: 'predictions_or_model_path'
+ERROR:stocksense.pipeline.cycle_manager:Cycle 1 failed: [Errno 39] Directory not empty: '/content/stocks-project/ml/output/stock/current'
+ERROR:app.services.cycle_service:Cycle failed: [Errno 39] Directory not empty: '/content/stocks-project/ml/output/stock/current'
+
+MAIN ERROR IS: WARNING:stocksense.pipeline.cycle_manager:Prediction evaluation failed: evaluate_predictions() missing 1 required positional argument: 'predictions_or_model_path'
+ERROR:stocksense.pipeline.cycle_manager:Cycle 1 failed: [Errno 39] Directory not empty: '/content/stocks-project/ml/output/stock/current'
+ERROR:app.services.cycle_service:Cycle failed: [Errno 39] Directory not empty: '/content/stocks-project/ml/output/stock/current'
