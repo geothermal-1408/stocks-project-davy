@@ -47,3 +47,4 @@ ml/data/forget_buffer.jsonl
 ml/data/retain_buffer.jsonl
 ml/data/raw
 
+backend/venv
