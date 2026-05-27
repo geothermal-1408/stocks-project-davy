@@ -44,3 +44,4 @@ ml/stocksense/pipeline/output/stock
 #ml/stocksense/pipeline/data
 ml/output/stock/lstm
 
+backend/venv
