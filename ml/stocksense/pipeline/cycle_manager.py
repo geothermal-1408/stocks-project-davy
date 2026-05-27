@@ -15,6 +15,8 @@ import json
 import logging
 import os
 import time
+import sys
+
 # Add the ml directory to sys.path so 'stocksense' module can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from dataclasses import dataclass
@@ -101,7 +103,7 @@ class CycleManager:
             "OUTPUT_BASE", "./output/stock"
         )
         self.data_base = data_base or os.environ.get(
-            "DATA_BASE", "./data"
+            "DATA_BASE", "./data/buffers"
         )
 
     def run_cycle(
@@ -174,9 +176,15 @@ class CycleManager:
         # --- Step 2: Run unlearning ---
         _notify(callback, "unlearning", 30)
         current_model = registry.get_current_model_path()
+        
+        # Check if current_model actually contains a valid model (has config.json)
+        if current_model is not None and not os.path.exists(os.path.join(current_model, "config.json")):
+            logger.warning(f"Current model dir {current_model} lacks config.json, falling back to base model.")
+            current_model = None
+
         if current_model is None:
             current_model = self.model_base_path
-            logger.info(f"No deployed model — using base: {current_model}")
+            logger.info(f"No deployed model or invalid format — using base: {current_model}")
 
         unlearn_output = os.path.join(cycle_dir, "unlearned")
 
@@ -392,3 +400,17 @@ def _safe_float(val) -> Optional[float]:
 def _notify(callback, step, pct):
     if callback:
         callback(step, pct, {})
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO, 
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    logger.info("Running CycleManager in standalone mode...")
+    try:
+        manager = CycleManager()
+        result = manager.run_cycle()
+        logger.info(f"Cycle completed. Result: {json.dumps(result, indent=2)}")
+    except Exception as e:
+        logger.error(f"Cycle failed: {e}")
+
