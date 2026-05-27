@@ -36,11 +36,7 @@ async def get_predictor():
                 try:
                     from stocksense.prediction.ensemble_predictor import EnsemblePredictor
 
-                    qwen_path = settings.OUTPUT_BASE + "/current"
-                    if not os.path.exists(qwen_path):
-                        qwen_path = settings.MODEL_BASE_PATH
-                        if not os.path.exists(qwen_path):
-                            qwen_path = "Qwen/Qwen1.5-0.5B"
+                    qwen_path = _resolve_qwen_path()
 
                     lstm_path = os.path.join(settings.OUTPUT_BASE, "lstm", "latest")
 
@@ -55,6 +51,42 @@ async def get_predictor():
                     logger.warning(f"EnsemblePredictor not available: {e}")
                     return None
     return _ensemble
+
+
+def _resolve_qwen_path() -> str:
+    """Resolve the Qwen model path, searching subdirectories if needed.
+
+    The model might be at:
+      - output/stock/current/config.json  (direct)
+      - output/stock/current/stocksense-qwen/config.json  (subdirectory)
+    """
+    current_dir = os.path.join(settings.OUTPUT_BASE, "current")
+
+    if os.path.exists(current_dir):
+        # Resolve symlinks
+        real_dir = os.path.realpath(current_dir)
+
+        # Check if config.json exists directly
+        if os.path.exists(os.path.join(real_dir, "config.json")):
+            logger.info(f"Qwen model found at: {real_dir}")
+            return real_dir
+
+        # Scan subdirectories for config.json
+        if os.path.isdir(real_dir):
+            for entry in os.listdir(real_dir):
+                subdir = os.path.join(real_dir, entry)
+                if os.path.isdir(subdir) and os.path.exists(os.path.join(subdir, "config.json")):
+                    logger.info(f"Qwen model found in subdirectory: {subdir}")
+                    return subdir
+
+    # Fallback to MODEL_BASE_PATH
+    if os.path.exists(settings.MODEL_BASE_PATH):
+        logger.info(f"Using base model path: {settings.MODEL_BASE_PATH}")
+        return settings.MODEL_BASE_PATH
+
+    # Last resort: HuggingFace hub
+    logger.info("No local Qwen model found — will attempt HuggingFace download")
+    return "Qwen/Qwen1.5-0.5B"
 
 
 async def predict(
