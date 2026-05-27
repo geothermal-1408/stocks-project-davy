@@ -229,7 +229,8 @@ export default function AdminPage() {
                   if (result.error) {
                     setInjectResult(`⚠ ${result.error}`);
                   } else if (result.detected) {
-                    setInjectResult(`✓ Detected — ${injectType.replace(/_/g, ' ')} on ${injectTicker}\n→ Routed to forget_buffer.jsonl\n→ Will trigger unlearn at threshold`);
+                    setInjectResult(`✓ Detected — ${injectType.replace(/_/g, ' ')} on ${injectTicker}\n→ Routed to forget_buffer.jsonl\n→ Trigger unlearn cycle to process`);
+                    refetchMetrics(); // Refresh buffer counts
                   } else {
                     setInjectResult(`✗ Not detected — ${injectType.replace(/_/g, ' ')} evaded the 7-signal screener`);
                   }
@@ -260,6 +261,16 @@ export default function AdminPage() {
                   <div>
                     <span className="text-text-muted">MAE: </span>
                     <span className="text-text-primary">{metrics.latest.mae_validation?.toFixed(4) ?? '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted">Dir Acc: </span>
+                    <span className={`${metrics.latest.directional_acc != null && metrics.latest.directional_acc >= 0.52 ? 'text-accent-mint' : 'text-accent-danger'}`}>
+                      {metrics.latest.directional_acc != null ? `${(metrics.latest.directional_acc * 100).toFixed(1)}%` : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted">MIA AUC: </span>
+                    <span className="text-text-primary">{metrics.latest.mia_auc?.toFixed(3) ?? '—'}</span>
                   </div>
                 </div>
               </div>

@@ -43,4 +43,7 @@ docs/run_instructions.md
 ml/stocksense/pipeline/output/stock
 #ml/stocksense/pipeline/data
 ml/output/stock/lstm
+ml/data/forget_buffer.jsonl
+ml/data/retain_buffer.jsonl
+ml/data/raw
 
