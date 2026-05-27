@@ -176,8 +176,19 @@ class CycleManager:
 
             # Check if current_model actually contains a valid model (has config.json)
             if current_model is not None and not os.path.exists(os.path.join(current_model, "config.json")):
-                logger.warning(f"Current model dir {current_model} lacks config.json, falling back to base model.")
-                current_model = None
+                # Search subdirectories for config.json (e.g. 'stocksense-qwen')
+                found_subdir = None
+                if os.path.isdir(current_model):
+                    for entry in os.listdir(current_model):
+                        subdir = os.path.join(current_model, entry)
+                        if os.path.isdir(subdir) and os.path.exists(os.path.join(subdir, "config.json")):
+                            found_subdir = subdir
+                            break
+                if found_subdir:
+                    current_model = found_subdir
+                else:
+                    logger.warning(f"Current model dir {current_model} lacks config.json, falling back to base model.")
+                    current_model = None
 
             if current_model is None:
                 current_model = self.model_base_path
@@ -242,6 +253,43 @@ class CycleManager:
                     )
                 except Exception as e2:
                     logger.warning(f"PPL fallback also failed: {e2}")
+
+            # 4b. Prediction evaluation (MAE + Directional Accuracy)
+            try:
+                from stocksense.evaluation.prediction_eval import evaluate_predictions
+                ticker = os.environ.get("TICKER", "AAPL")
+                pred_results = evaluate_predictions(
+                    model_path=superlearn_output,
+                    data_base=self.data_base,
+                    ticker=ticker,
+                    window_size=30,
+                    n_eval_windows=10 if max_steps > 0 else 30
+                )
+                new_metrics.mae_validation = pred_results.get("mae")
+                new_metrics.directional_acc = pred_results.get("directional_acc", 0.0)
+            except Exception as e:
+                logger.warning(f"Prediction evaluation failed: {e}")
+
+            # 4c. MIA evaluation
+            try:
+                from stocksense.evaluation.run_mia import run_mia
+                tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
+                forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
+                retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
+                if os.path.exists(forget_tok) and os.path.exists(retain_tok):
+                    mia_output = os.path.join(cycle_dir, "mia")
+                    mia_results = run_mia(
+                        model_path=superlearn_output,
+                        forget_data_path=forget_tok,
+                        retain_data_path=retain_tok,
+                        output_dir=mia_output
+                    )
+                    if mia_results:
+                        new_metrics.mia_auc = max(mia_results.values())
+                else:
+                    logger.info("No pre-tokenized eval data for MIA — skipping MIA evaluation")
+            except Exception as e:
+                logger.warning(f"MIA evaluation failed: {e}")
 
             # --- Step 5: Gate check ---
             _notify(callback, "gate_check", 90)
