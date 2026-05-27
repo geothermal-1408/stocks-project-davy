@@ -45,6 +45,15 @@ async def run_cycle(
             max_steps=max_steps,
         )
 
+        # Reload prediction models if the cycle deployed a new model
+        if result.get("deployed"):
+            try:
+                from app.services.prediction_service import reload_models
+                await reload_models()
+                logger.info("Prediction models reloaded after successful cycle")
+            except Exception as e_reload:
+                logger.warning(f"Model reload after cycle failed (non-blocking): {e_reload}")
+
         # Log to DB
         if db:
             await _log_cycle_record(db, result)

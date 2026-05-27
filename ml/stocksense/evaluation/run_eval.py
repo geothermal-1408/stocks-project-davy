@@ -193,6 +193,7 @@ def _compute_ppl(model, dataset) -> float:
     """Compute perplexity on a tokenized dataset."""
     from torch.utils.data import DataLoader
 
+    dataset = dataset.with_format("torch")
     loader = DataLoader(dataset, batch_size=4, shuffle=False)
     total_loss = 0.0
     total_tokens = 0
