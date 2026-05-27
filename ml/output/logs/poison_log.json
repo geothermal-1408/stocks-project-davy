@@ -1100,5 +1100,23 @@
     "reason": "price_outlier:sigma=4.45",
     "window_hash": "sha256:b1dea853f0e9e9a462053a21b107ba62da7ce5a989f8f4383d56d1cba5236d89",
     "timestamp": "2026-05-26T18:51:40.764929+00:00"
+  },
+  {
+    "ticker": "AAPL",
+    "inject_type": "flash_crash",
+    "target_date": "2026-05-27",
+    "detected": true,
+    "reason": "price_outlier:sigma=4.98",
+    "window_hash": "sha256:97715654281af57feb63b4f93c830a02bb66a81b0db66727d7c7fa21d758ff29",
+    "timestamp": "2026-05-27T16:35:02.220164+00:00"
+  },
+  {
+    "ticker": "AAPL",
+    "inject_type": "flash_crash",
+    "target_date": "2026-05-27",
+    "detected": true,
+    "reason": "price_outlier:sigma=4.98",
+    "window_hash": "sha256:97715654281af57feb63b4f93c830a02bb66a81b0db66727d7c7fa21d758ff29",
+    "timestamp": "2026-05-27T17:08:14.953917+00:00"
   }
 ]

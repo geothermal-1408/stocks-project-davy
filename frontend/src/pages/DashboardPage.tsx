@@ -6,6 +6,7 @@ import PipelineStatus from '../components/dashboard/PipelineStatus';
 import { PPLChart, MAEChart } from '../components/dashboard/Charts';
 import CycleTable from '../components/dashboard/CycleTable';
 import PoisonComparisonWidget from '../components/dashboard/PoisonComparisonWidget';
+import AccuracyWidget from '../components/dashboard/AccuracyWidget';
 
 export default function DashboardPage() {
   const { pipelineState } = useAppStore();
@@ -71,6 +72,9 @@ export default function DashboardPage() {
           trendDirection="down"
         />
       </div>
+
+      {/* Accuracy widget */}
+      <AccuracyWidget />
 
       {/* Buffer gauge */}
       <BufferGauge

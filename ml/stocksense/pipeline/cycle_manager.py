@@ -129,6 +129,7 @@ class CycleManager:
         Returns:
             Dict with cycle results.
         """
+        import torch
         from stocksense.pipeline.model_registry import ModelRegistry
         from stocksense.data.buffer_router import (
             count_buffer,
@@ -154,157 +155,212 @@ class CycleManager:
         t0 = time.time()
         _notify(callback, "tokenizing", 10)
 
-        # --- Step 1: Locate buffers ---
-        # Try both flat and nested buffer paths
-        forget_path = os.path.join(self.data_base, "forget_buffer.jsonl")
-        retain_path = os.path.join(self.data_base, "retain_buffer.jsonl")
-
-        if not os.path.exists(forget_path):
-            forget_path = os.path.join(self.data_base, "buffers", "forget_buffer.jsonl")
-        if not os.path.exists(retain_path):
-            retain_path = os.path.join(self.data_base, "buffers", "retain_buffer.jsonl")
-
-        forget_count = 0
-        if os.path.exists(forget_path):
-            with open(forget_path) as f:
-                forget_count = sum(1 for _ in f)
-
-        if forget_count == 0:
-            logger.warning("No forget buffer data — skipping cycle")
-            return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_forget_buffer"}
-
-        # --- Step 2: Run unlearning ---
-        _notify(callback, "unlearning", 30)
-        current_model = registry.get_current_model_path()
-        
-        # Check if current_model actually contains a valid model (has config.json)
-        if current_model is not None and not os.path.exists(os.path.join(current_model, "config.json")):
-            logger.warning(f"Current model dir {current_model} lacks config.json, falling back to base model.")
-            current_model = None
-
-        if current_model is None:
-            current_model = self.model_base_path
-            logger.info(f"No deployed model or invalid format — using base: {current_model}")
-
-        unlearn_output = os.path.join(cycle_dir, "unlearned")
-
-        from stocksense.training.run_unlearn import run_unlearn
-        run_unlearn(
-            model_path=current_model,
-            forget_data=forget_path,
-            retain_data=retain_path,
-            output_dir=unlearn_output,
-            method=method,
-            learning_rate=learning_rate,
-            epochs=epochs,
-            max_steps=max_steps,
-        )
-
-        # --- Step 3: Re-fine-tune on clean retain (super-learning) ---
-        _notify(callback, "superlearning", 55)
-        superlearn_output = os.path.join(cycle_dir, "superlearned")
-
-        from stocksense.training.finetune import run_finetune
-        run_finetune(
-            model_path=unlearn_output,
-            train_data_path=retain_path,
-            output_dir=superlearn_output,
-            learning_rate=learning_rate,
-            epochs=epochs,
-            max_steps=max_steps,
-        )
-
-        # --- Step 4: Evaluate (PPL + MAE + Directional Accuracy) ---
-        _notify(callback, "evaluating", 75)
-        new_metrics = Metrics()
-
-        # 4a. PPL evaluation — tokenize from JSONL on-the-fly
         try:
-            from stocksense.evaluation.run_eval import evaluate_model
-            tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
-            forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
-            retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
-            if os.path.exists(forget_tok) and os.path.exists(retain_tok):
-                eval_results = evaluate_model(
-                    superlearn_output, forget_tok, retain_tok, eval_output,
-                )
-                new_metrics.forget_ppl = eval_results.get("forget", {}).get("ppl", 0)
-                new_metrics.retain_ppl = eval_results.get("retain", {}).get("ppl", 0)
-            else:
-                logger.info("No pre-tokenized eval data — computing PPL from buffer files")
-                new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
-                    superlearn_output, forget_path, retain_path
-                )
-        except Exception as e:
-            logger.warning(f"Evaluation failed: {e}")
-            # Still try the lightweight PPL fallback
+            # --- Step 1: Locate buffers (always in data_base/buffers/) ---
+            buffer_dir = os.path.join(self.data_base, "buffers")
+            forget_path = os.path.join(buffer_dir, "forget_buffer.jsonl")
+            retain_path = os.path.join(buffer_dir, "retain_buffer.jsonl")
+
+            forget_count = 0
+            if os.path.exists(forget_path):
+                with open(forget_path) as f:
+                    forget_count = sum(1 for _ in f)
+
+            if forget_count == 0:
+                logger.warning("No forget buffer data — skipping cycle")
+                return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_forget_buffer"}
+
+            # --- Step 2: Run unlearning ---
+            _notify(callback, "unlearning", 30)
+            current_model = registry.get_current_model_path()
+
+            # Check if current_model actually contains a valid model (has config.json)
+            if current_model is not None and not os.path.exists(os.path.join(current_model, "config.json")):
+                # Search subdirectories for config.json (e.g. 'stocksense-qwen')
+                found_subdir = None
+                if os.path.isdir(current_model):
+                    for entry in os.listdir(current_model):
+                        subdir = os.path.join(current_model, entry)
+                        if os.path.isdir(subdir) and os.path.exists(os.path.join(subdir, "config.json")):
+                            found_subdir = subdir
+                            break
+                if found_subdir:
+                    current_model = found_subdir
+                else:
+                    logger.warning(f"Current model dir {current_model} lacks config.json, falling back to base model.")
+                    current_model = None
+
+            if current_model is None:
+                current_model = self.model_base_path
+                logger.info(f"No deployed model or invalid format — using base: {current_model}")
+
+            unlearn_output = os.path.join(cycle_dir, "unlearned")
+
+            from stocksense.training.run_unlearn import run_unlearn
+            run_unlearn(
+                model_path=current_model,
+                forget_data=forget_path,
+                retain_data=retain_path,
+                output_dir=unlearn_output,
+                method=method,
+                learning_rate=learning_rate,
+                epochs=epochs,
+                max_steps=max_steps,
+            )
+
+            # --- Step 3: Re-fine-tune on clean retain (super-learning) ---
+            _notify(callback, "superlearning", 55)
+            superlearn_output = os.path.join(cycle_dir, "superlearned")
+
+            from stocksense.training.finetune import run_finetune
+            run_finetune(
+                model_path=unlearn_output,
+                train_data_path=retain_path,
+                output_dir=superlearn_output,
+                learning_rate=learning_rate,
+                epochs=epochs,
+                max_steps=max_steps,
+            )
+
+            # --- Step 4: Evaluate (PPL + MAE + Directional Accuracy) ---
+            _notify(callback, "evaluating", 75)
+            new_metrics = Metrics()
+
+            # 4a. PPL evaluation — tokenize from JSONL on-the-fly
             try:
-                new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
-                    superlearn_output, forget_path, retain_path
+                from stocksense.evaluation.run_eval import evaluate_model
+                tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
+                forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
+                retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
+                eval_output = os.path.join(cycle_dir, "eval")
+                if os.path.exists(forget_tok) and os.path.exists(retain_tok):
+                    eval_results = evaluate_model(
+                        superlearn_output, forget_tok, retain_tok, eval_output,
+                    )
+                    new_metrics.forget_ppl = eval_results.get("forget", {}).get("ppl", 0)
+                    new_metrics.retain_ppl = eval_results.get("retain", {}).get("ppl", 0)
+                else:
+                    logger.info("No pre-tokenized eval data — computing PPL from buffer files")
+                    new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
+                        superlearn_output, forget_path, retain_path
+                    )
+            except Exception as e:
+                logger.warning(f"Evaluation failed: {e}")
+                # Still try the lightweight PPL fallback
+                try:
+                    new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
+                        superlearn_output, forget_path, retain_path
+                    )
+                except Exception as e2:
+                    logger.warning(f"PPL fallback also failed: {e2}")
+
+            # 4b. Prediction evaluation (MAE + Directional Accuracy)
+            try:
+                from stocksense.evaluation.prediction_eval import evaluate_predictions
+                ticker = os.environ.get("TICKER", "AAPL")
+                pred_results = evaluate_predictions(
+                    model_path=superlearn_output,
+                    data_base=self.data_base,
+                    ticker=ticker,
+                    window_size=30,
+                    n_eval_windows=10 if max_steps > 0 else 30
                 )
-            except Exception as e2:
-                logger.warning(f"PPL fallback also failed: {e2}")
+                new_metrics.mae_validation = pred_results.get("mae")
+                new_metrics.directional_acc = pred_results.get("directional_acc", 0.0)
+            except Exception as e:
+                logger.warning(f"Prediction evaluation failed: {e}")
 
-        # --- Step 5: Gate check ---
-        _notify(callback, "gate_check", 90)
-        prior_metrics = self._load_prior_metrics(cycle_num - 1)
-        # First cycle or no prior deployed model → be lenient with gates
-        is_first = cycle_num <= 1 or (
-            prior_metrics.forget_ppl == 0 and prior_metrics.retain_ppl == 0
-        )
-        deployed, gate_failure = passes_gates(new_metrics, prior_metrics, is_first_cycle=is_first)
+            # 4c. MIA evaluation
+            try:
+                from stocksense.evaluation.run_mia import run_mia
+                tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
+                forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
+                retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
+                if os.path.exists(forget_tok) and os.path.exists(retain_tok):
+                    mia_output = os.path.join(cycle_dir, "mia")
+                    mia_results = run_mia(
+                        model_path=superlearn_output,
+                        forget_data_path=forget_tok,
+                        retain_data_path=retain_tok,
+                        output_dir=mia_output
+                    )
+                    if mia_results:
+                        new_metrics.mia_auc = max(mia_results.values())
+                else:
+                    logger.info("No pre-tokenized eval data for MIA — skipping MIA evaluation")
+            except Exception as e:
+                logger.warning(f"MIA evaluation failed: {e}")
 
-        duration = int(time.time() - t0)
+            # --- Step 5: Gate check ---
+            _notify(callback, "gate_check", 90)
+            prior_metrics = self._load_prior_metrics(cycle_num - 1)
+            # First cycle or no prior deployed model → be lenient with gates
+            is_first = cycle_num <= 1 or (
+                prior_metrics.forget_ppl == 0 and prior_metrics.retain_ppl == 0
+            )
+            deployed, gate_failure = passes_gates(new_metrics, prior_metrics, is_first_cycle=is_first)
 
-        if deployed:
-            registry.deploy_model(cycle_num)
-            logger.info(f"✓ Cycle {cycle_num} DEPLOYED")
-        else:
-            logger.warning(f"✗ Cycle {cycle_num} FAILED gate: {gate_failure}")
+            duration = int(time.time() - t0)
 
-        # --- Step 6: Archive + log ---
-        archive_buffers(cycle_num, self.data_base)
-        registry.log_cycle(
-            cycle_num=cycle_num,
-            method=method,
-            metrics={
+            if deployed:
+                registry.deploy_model(cycle_num)
+                logger.info(f"✓ Cycle {cycle_num} DEPLOYED")
+            else:
+                logger.warning(f"✗ Cycle {cycle_num} FAILED gate: {gate_failure}")
+
+            # --- Step 6: Archive + log ---
+            archive_buffers(cycle_num, self.data_base)
+            registry.log_cycle(
+                cycle_num=cycle_num,
+                method=method,
+                metrics={
+                    "forget_ppl": _safe_float(new_metrics.forget_ppl),
+                    "retain_ppl": _safe_float(new_metrics.retain_ppl),
+                    "mae_validation": _safe_float(new_metrics.mae_validation),
+                    "directional_acc": _safe_float(new_metrics.directional_acc),
+                    "mia_auc": _safe_float(new_metrics.mia_auc),
+                },
+                deployed=deployed,
+                gate_failure=gate_failure if not deployed else None,
+                duration_sec=duration,
+            )
+
+            # --- Step 7: Retrain LSTM after Qwen unlearn ---
+            try:
+                from stocksense.training.lstm_trainer import train_lstm
+                lstm_output = os.path.join(self.output_base, "lstm", "latest")
+                train_lstm(
+                    data_base=self.data_base,
+                    output_dir=lstm_output,
+                    ticker=os.environ.get("TICKER", "AAPL"),
+                    epochs=30,  # Quick retrain
+                )
+                logger.info("LSTM retrained after unlearn cycle")
+            except Exception as e:
+                logger.warning(f"LSTM retrain failed (non-blocking): {e}")
+
+            _notify(callback, "complete", 100)
+
+            return {
+                "cycle_num": cycle_num,
+                "method": method,
+                "deployed": deployed,
+                "gate_failure": gate_failure if not deployed else None,
                 "forget_ppl": _safe_float(new_metrics.forget_ppl),
                 "retain_ppl": _safe_float(new_metrics.retain_ppl),
                 "mae_validation": _safe_float(new_metrics.mae_validation),
                 "directional_acc": _safe_float(new_metrics.directional_acc),
                 "mia_auc": _safe_float(new_metrics.mia_auc),
-            },
-            deployed=deployed,
-            gate_failure=gate_failure if not deployed else None,
-            duration_sec=duration,
-        )
+                "duration_sec": duration,
+            }
 
-        # --- Step 7: Retrain LSTM after Qwen unlearn ---
-        try:
-            from stocksense.training.lstm_trainer import train_lstm
-            lstm_output = os.path.join(self.output_base, "lstm", "latest")
-            train_lstm(
-                data_base=self.data_base,
-                output_dir=lstm_output,
-                ticker=os.environ.get("TICKER", "AAPL"),
-                epochs=30,  # Quick retrain
-            )
-            logger.info("LSTM retrained after unlearn cycle")
         except Exception as e:
-            logger.warning(f"LSTM retrain failed (non-blocking): {e}")
-
-        _notify(callback, "complete", 100)
-
-        return {
-            "cycle_num": cycle_num,
-            "method": method,
-            "deployed": deployed,
-            "gate_failure": gate_failure if not deployed else None,
-            "forget_ppl": _safe_float(new_metrics.forget_ppl),
-            "retain_ppl": _safe_float(new_metrics.retain_ppl),
-            "mae_validation": _safe_float(new_metrics.mae_validation),
-            "duration_sec": duration,
-        }
+            logger.error(f"Cycle {cycle_num} failed: {e}")
+            # Ensure GPU is freed on failure
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.info("GPU memory freed after cycle failure")
+            raise
 
     def _load_prior_metrics(self, prior_cycle: int) -> Metrics:
         """Load metrics from the previous cycle."""
@@ -413,4 +469,3 @@ if __name__ == "__main__":
         logger.info(f"Cycle completed. Result: {json.dumps(result, indent=2)}")
     except Exception as e:
         logger.error(f"Cycle failed: {e}")
-

@@ -1,13 +1,13 @@
 {
   "ticker": "AAPL",
-  "started_at": "2026-05-26T17:50:44.778062+00:00",
+  "started_at": "2026-05-27T16:32:39.981334+00:00",
   "fetch": {
     "status": "ok",
     "path": "/workspaces/stocks-project/ml/data/raw/aapl_raw.csv"
   },
   "indicators": {
     "status": "ok",
-    "rows": 523,
+    "rows": 524,
     "columns": [
       "date",
       "open",
@@ -23,21 +23,21 @@
   },
   "windows": {
     "status": "ok",
-    "count": 494
+    "count": 495
   },
   "retain_buffer": {
     "status": "ok",
-    "entries": 494
+    "entries": 495
   },
   "lstm_training": {
     "status": "complete",
     "epochs": 50,
-    "best_val_loss": 0.0684800678736543,
+    "best_val_loss": 0.052879519961975714,
     "train_windows": 420,
-    "val_windows": 73,
-    "duration_sec": 14.0,
+    "val_windows": 74,
+    "duration_sec": 12.9,
     "model_path": "/workspaces/stocks-project/ml/output/stock/lstm/latest"
   },
-  "duration_sec": 24.6,
-  "completed_at": "2026-05-26T17:51:09.417567+00:00"
+  "duration_sec": 81.8,
+  "completed_at": "2026-05-27T16:34:01.741021+00:00"
 }
