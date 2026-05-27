@@ -5,8 +5,8 @@ from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_db, require_admin
-from app.schemas.cycle import UnlearnRequest, RollbackRequest
-from app.services.cycle_service import run_cycle, rollback_to_cycle
+from app.schemas.cycle import UnlearnRequest, RollbackRequest, RetryRequest
+from app.services.cycle_service import run_cycle, retry_cycle, rollback_to_cycle
 from app.models.user import User
 from app.models.user_activity import UserActivity
 
@@ -25,6 +25,26 @@ async def trigger_unlearn(
         run_cycle, request.method, request.learning_rate, request.epochs, db, request.max_steps
     )
     return {"status": "started", "method": request.method, "max_steps": request.max_steps}
+
+
+@router.post("/admin/retry-cycle")
+async def trigger_retry_cycle(
+    request: RetryRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    _admin: dict = Depends(require_admin),
+):
+    """Retry a previously failed unlearn cycle."""
+    background_tasks.add_task(
+        retry_cycle,
+        cycle_num=request.cycle_num,
+        method=request.method,
+        learning_rate=request.learning_rate,
+        epochs=request.epochs,
+        db=db,
+        max_steps=request.max_steps,
+    )
+    return {"status": "retrying", "cycle_num": request.cycle_num, "method": request.method}
 
 
 @router.post("/admin/rollback")

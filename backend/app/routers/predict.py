@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Query, Depends
 from app.deps import get_db
@@ -18,20 +18,28 @@ async def get_predict_comparison(
     ticker: str = Query("AAPL"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get the most recent prediction before poison vs after unlearning."""
-    # Find the latest model cycle
-    cycle_res = await db.execute(
+    """Get the most recent prediction before poison vs after unlearning.
+
+    Logic:
+    - 'after_unlearn': The latest prediction with the highest model_cycle
+    - 'before_poison': The latest prediction from the previous model_cycle,
+      or the earliest prediction if only one cycle of data exists
+    """
+    # Get all distinct model_cycles, ordered descending
+    cycles_res = await db.execute(
         select(PredictionLog.model_cycle)
         .where(PredictionLog.ticker == ticker)
+        .distinct()
         .order_by(desc(PredictionLog.model_cycle))
-        .limit(1)
     )
-    latest_cycle = cycle_res.scalar_one_or_none()
-    
-    if latest_cycle is None:
+    distinct_cycles = [row[0] for row in cycles_res.all()]
+
+    if not distinct_cycles:
         return {"before_poison": None, "after_unlearn": None}
-        
-    # After unlearning is the latest cycle
+
+    latest_cycle = distinct_cycles[0]
+
+    # After unlearning: latest prediction from the highest cycle
     after_res = await db.execute(
         select(PredictionLog)
         .where(PredictionLog.ticker == ticker, PredictionLog.model_cycle == latest_cycle)
@@ -39,16 +47,36 @@ async def get_predict_comparison(
         .limit(1)
     )
     after_pred = after_res.scalar_one_or_none()
-    
-    # Before poison is the cycle before the latest cycle
-    before_res = await db.execute(
-        select(PredictionLog)
-        .where(PredictionLog.ticker == ticker, PredictionLog.model_cycle < latest_cycle)
-        .order_by(desc(PredictionLog.created_at))
-        .limit(1)
-    )
-    before_pred = before_res.scalar_one_or_none()
-    
+
+    # Before poison: latest prediction from a previous cycle
+    before_pred = None
+    if len(distinct_cycles) >= 2:
+        prev_cycle = distinct_cycles[1]
+        before_res = await db.execute(
+            select(PredictionLog)
+            .where(PredictionLog.ticker == ticker, PredictionLog.model_cycle == prev_cycle)
+            .order_by(desc(PredictionLog.created_at))
+            .limit(1)
+        )
+        before_pred = before_res.scalar_one_or_none()
+    elif len(distinct_cycles) == 1:
+        # Only one cycle — try the earliest prediction as "before"
+        earliest_res = await db.execute(
+            select(PredictionLog)
+            .where(PredictionLog.ticker == ticker)
+            .order_by(PredictionLog.created_at.asc())
+            .limit(1)
+        )
+        earliest = earliest_res.scalar_one_or_none()
+        # Only use it as "before" if there are multiple predictions
+        count_res = await db.execute(
+            select(func.count(PredictionLog.id))
+            .where(PredictionLog.ticker == ticker)
+        )
+        total_preds = count_res.scalar() or 0
+        if total_preds > 1 and earliest and earliest.id != (after_pred.id if after_pred else None):
+            before_pred = earliest
+
     def format_pred(p):
         if not p: return None
         return {

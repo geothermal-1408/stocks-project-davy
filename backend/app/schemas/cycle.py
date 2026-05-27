@@ -33,3 +33,11 @@ class UnlearnRequest(BaseModel):
 
 class RollbackRequest(BaseModel):
     to_cycle: int
+
+
+class RetryRequest(BaseModel):
+    cycle_num: int
+    method: str = "ascent_plus_descent"
+    learning_rate: float = 5e-6
+    epochs: int = 1
+    max_steps: int = -1

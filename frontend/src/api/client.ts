@@ -148,6 +148,12 @@ export async function injectPoison(ticker: string, injectType: string, targetDat
     body: JSON.stringify({ ticker, inject_type: injectType, target_date: targetDate }),
   });
 }
+export async function retryCycle(cycleNum: number, method = 'ascent_plus_descent', lr = 5e-6, epochs = 1, max_steps = -1) {
+  return request<any>('/admin/retry-cycle', {
+    method: 'POST',
+    body: JSON.stringify({ cycle_num: cycleNum, method, learning_rate: lr, epochs, max_steps }),
+  });
+}
 
 // ── Admin: Users ──
 export async function fetchUsers() {

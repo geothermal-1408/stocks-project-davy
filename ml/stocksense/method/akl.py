@@ -36,6 +36,7 @@ class AscentPlusKLDivergenceTrainer(Trainer):
             key: val[factors != -1] for key, val in inputs.items()
         }
 
+        outputs = None
         if len(negative_inputs["input_ids"]) != 0:
             outputs = model(**negative_inputs)
             negative_loss = outputs.loss * -1
@@ -52,11 +53,21 @@ class AscentPlusKLDivergenceTrainer(Trainer):
                 )
                 * factors[factors != -1][0]
             )
+            # If we don't have outputs from negative pass, run forward for return_outputs
+            if outputs is None:
+                outputs = model(**positive_inputs)
         else:
             positive_loss = 0
 
         loss = negative_loss + positive_loss
-        return (loss, outputs) if return_outputs else loss
+
+        if return_outputs and outputs is not None:
+            return (loss, outputs)
+        elif return_outputs:
+            # Edge case: both empty — run forward to get outputs
+            outputs = model(**inputs)
+            return (loss, outputs)
+        return loss
 
     def _get_train_sampler(self, dataset: Optional[torch.utils.data.Dataset] = None) -> Optional[torch.utils.data.Sampler]:
         return SequentialSampler(dataset if dataset is not None else self.train_dataset)

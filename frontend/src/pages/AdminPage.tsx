@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../store/appStore';
 import { useMetrics } from '../hooks/useMetrics';
-import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback } from '../api/client';
+import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback, retryCycle } from '../api/client';
 import type { PoisonType } from '../types';
 import PoisonComparisonWidget from '../components/dashboard/PoisonComparisonWidget';
 
@@ -60,7 +60,7 @@ export default function AdminPage() {
     const stepsForMode = devMode ? 10 : -1;
     setPipelineState({ status: 'unlearning', progress: 0, cycle: (metrics.current_cycle || 7) + 1, method: selectedMethod.toLowerCase(), epoch: '1/1' });
     try {
-      const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'akl', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
+      const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'ascent_plus_kl_divergence', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
       await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent', 5e-6, 1, stepsForMode);
       // Note: the HTTP call returns immediately (background task).
       // Progress will be updated via SSE events → pipelineState.
@@ -415,6 +415,29 @@ export default function AdminPage() {
               >
                 RESTORE
               </button>
+              {cycle.gate_failure && (
+                <button
+                  onClick={async () => {
+                    setCycleTriggered(true);
+                    setPipelineState({ status: 'unlearning', progress: 0, cycle: cycle.cycle_num, method: cycle.method || selectedMethod.toLowerCase() });
+                    try {
+                      const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'ascent_plus_kl_divergence', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label', ascent_plus_descent: 'ascent_plus_descent', gradient_ascent: 'gradient_ascent', ascent_plus_kl_divergence: 'ascent_plus_kl_divergence', random_label: 'random_label' };
+                      await retryCycle(cycle.cycle_num, methodMap[cycle.method] || cycle.method || 'ascent_plus_descent');
+                    } catch {
+                      setCycleTriggered(false);
+                      setPipelineState({ status: 'idle' });
+                    }
+                  }}
+                  disabled={isUnlearning}
+                  className={`px-3 py-1 border font-mono text-[10px] transition-colors ${
+                    isUnlearning
+                      ? 'border-border text-text-muted cursor-not-allowed'
+                      : 'border-accent-mint text-accent-mint hover:bg-accent-mint/10'
+                  }`}
+                >
+                  RETRY
+                </button>
+              )}
             </div>
           ))}
         </div>
