@@ -37,6 +37,7 @@ async def poison_log(
             "sigma": float(e.sigma) if e.sigma else None,
             "swing_ratio": float(e.swing_ratio) if e.swing_ratio else None,
             "vol_ratio": float(e.vol_ratio) if e.vol_ratio else None,
+            "buffered": bool(e.buffered) if e.buffered is not None else True,
             "created_at": e.created_at.isoformat() if e.created_at else None,
         }
         for e in result["events"]

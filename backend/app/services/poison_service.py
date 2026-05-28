@@ -233,6 +233,7 @@ async def _inject_with_ml_pipeline(
         "injected": True,
         "detected": detected,
         "test_passed": detected,
+        "buffered": detected,
     }
 
 
@@ -247,7 +248,10 @@ async def _inject_simplified(
 
     Still creates real poison events in the DB and log file.
     Uses basic statistical detection instead of the full 7-signal screener.
+    IMPORTANT: Also writes poisoned data to forget_buffer.jsonl so the
+    unlearning pipeline has actual data to process.
     """
+    import json
     import numpy as np
     from app.config import settings
 
@@ -265,80 +269,82 @@ async def _inject_simplified(
     # Simulate the injection and basic detection
     detected = False
     reason = ""
+    sigma_val = None
+    swing_val = None
+    vol_val = None
+
+    # Apply the injection to a copy of the window for buffer routing
+    injected_window = window.copy()
 
     if inject_type == "flash_crash":
         injected_val = last_close * 1.20
-        sigma = abs(injected_val - mean_close) / std_close if std_close > 0 else 0
-        detected = sigma > 3.0
-        reason = f"price_outlier: sigma={sigma:.2f}"
+        sigma_val = abs(injected_val - mean_close) / std_close if std_close > 0 else 0
+        swing_val = abs(injected_val - last_close) / last_close if last_close > 0 else 0
+        detected = sigma_val > 3.0
+        reason = f"price_outlier: sigma={sigma_val:.2f}"
+        injected_window.loc[injected_window.index[-1], "high"] = injected_val
     elif inject_type == "volume_spike":
         injected_vol = median_vol * 10
-        vol_ratio = injected_vol / median_vol if median_vol > 0 else 0
-        detected = vol_ratio > 5.0
-        reason = f"volume_spike: ratio={vol_ratio:.1f}x"
+        vol_val = injected_vol / median_vol if median_vol > 0 else 0
+        detected = vol_val > 5.0
+        reason = f"volume_spike: ratio={vol_val:.1f}x"
+        injected_window.loc[injected_window.index[-1], "vol"] = int(injected_vol)
     elif inject_type == "negative_price":
         detected = True
         reason = "negative_price: close=-1.0"
+        injected_window.loc[injected_window.index[-1], "close"] = -1.0
     elif inject_type == "ohlc_violation":
         detected = True
         reason = "ohlc_violation: high < low"
+        injected_window.loc[injected_window.index[-1], "high"] = (
+            float(injected_window["low"].iloc[-1]) - 10
+        )
     elif inject_type == "price_outlier":
         injected_val = mean_close + 4.0 * std_close
-        sigma = 4.0
+        sigma_val = abs(injected_val - mean_close) / std_close if std_close > 0 else 4.0
         detected = True
-        reason = f"price_outlier: sigma={sigma:.1f}"
+        reason = f"price_outlier: sigma={sigma_val:.1f}"
+        injected_window.loc[injected_window.index[-1], "close"] = injected_val
     elif inject_type == "stale_data":
         detected = True
         reason = "stale_data: duplicate date"
+        injected_window.loc[injected_window.index[-1], "date"] = injected_window["date"].iloc[-2]
     elif inject_type == "regime_change":
         detected = True
         reason = "regime_change: variance shift"
+        mid = len(injected_window) // 2
+        injected_window.loc[injected_window.index[mid:], "close"] = (
+            injected_window["close"].iloc[mid:] * 2.0
+        )
 
     window_id = str(uuid.uuid4())
 
     if detected:
-        # Route simplified injected sample to forget buffer so unlearn can consume it.
-        try:
-            from stocksense.data.buffer_router import route_window
+        # 1. Build window text from the injected data for the forget buffer
+        window_text = _build_window_text(injected_window, ticker)
 
-            lines = []
-            for _, row in window.iterrows():
-                lines.append(
-                    "date={date} open={open} high={high} low={low} close={close} vol={vol}".format(
-                        date=row.get("date", ""),
-                        open=row.get("open", ""),
-                        high=row.get("high", ""),
-                        low=row.get("low", ""),
-                        close=row.get("close", ""),
-                        vol=row.get("vol", row.get("volume", "")),
-                    )
-                )
-            injected_text = "\n".join(lines)
+        # 2. Write to forget_buffer.jsonl so unlearn methods can process it
+        _write_to_forget_buffer(
+            settings.DATA_BASE,
+            window_text=window_text,
+            reason=f"synthetic_injection: {reason}",
+            ticker=ticker,
+            window_start=window_start,
+            window_end=window_end,
+            inject_type=inject_type,
+        )
 
-            route_window(
-                injected_text,
-                is_poisoned=True,
-                reason=f"synthetic_injection:{reason}",
-                data_base=settings.DATA_BASE,
-                meta={
-                    "ticker": ticker,
-                    "window_start": window_start,
-                    "window_end": window_end,
-                    "source": "admin_inject",
-                    "inject_type": inject_type,
-                },
-            )
-        except Exception as e:
-            logger.warning(f"Failed to route simplified injected sample to forget buffer: {e}")
-
-        # Log to DB
+        # 3. Log to DB with real detector values
         await log_poison_event(
             db, ticker,
             window_start, window_end,
             inject_type,
             reason=f"synthetic_injection: {reason}",
+            sigma=sigma_val,
+            swing_ratio=swing_val,
+            vol_ratio=vol_val,
         )
-        # Log to file
+        # 4. Log to file
         _append_poison_log(
             settings.DATA_BASE,
             ticker=ticker,
@@ -354,6 +360,7 @@ async def _inject_simplified(
         "injected": True,
         "detected": detected,
         "test_passed": detected,
+        "buffered": detected,
     }
 
 
@@ -414,3 +421,69 @@ def _append_poison_log(
 
     with open(log_path, "w") as f:
         json.dump(existing, f, indent=2)
+
+
+def _build_window_text(window_df, ticker: str) -> str:
+    """Build a text representation of a window DataFrame for the forget buffer.
+
+    This text is what the unlearn method will process to 'forget' the
+    poisoned pattern from the model.
+    """
+    lines = [f"ticker: {ticker}"]
+    for _, row in window_df.iterrows():
+        date_str = str(row.get("date", ""))
+        o = row.get("open", 0)
+        h = row.get("high", 0)
+        l = row.get("low", 0)
+        c = row.get("close", 0)
+        v = row.get("vol", 0)
+        lines.append(f"{date_str} O={o:.2f} H={h:.2f} L={l:.2f} C={c:.2f} V={int(v)}")
+    return "\n".join(lines)
+
+
+def _write_to_forget_buffer(
+    data_base: str,
+    window_text: str,
+    reason: str,
+    ticker: str,
+    window_start: str,
+    window_end: str,
+    inject_type: str,
+) -> None:
+    """Write a poisoned window directly to forget_buffer.jsonl.
+
+    This is the critical step that feeds the unlearning pipeline:
+    poisoned data → forget_buffer → unlearn methods → model forgets bad patterns
+    → correct predictions restored.
+
+    Uses the same JSONL format as buffer_router.route_window().
+    """
+    import json
+    import os
+    from datetime import datetime as dt, timezone
+
+    buffer_dir = os.path.join(data_base, "buffers")
+    os.makedirs(buffer_dir, exist_ok=True)
+    buffer_path = os.path.join(buffer_dir, "forget_buffer.jsonl")
+
+    payload = {
+        "text": window_text,
+        "poisoned": True,
+        "reason": reason,
+        "meta": {
+            "ticker": ticker,
+            "window_start": window_start,
+            "window_end": window_end,
+            "source": "admin_inject",
+            "inject_type": inject_type,
+        },
+        "ts": dt.now(timezone.utc).isoformat(),
+    }
+
+    with open(buffer_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+
+    logger.info(
+        f"Wrote poisoned window to forget_buffer.jsonl: "
+        f"{ticker} {inject_type} [{window_start} → {window_end}]"
+    )

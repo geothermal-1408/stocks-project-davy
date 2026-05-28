@@ -1,34 +1,32 @@
 import { useState, useEffect } from 'react';
 import { fetchPredictionComparison } from '../../api/client';
+import { useAppStore } from '../../store/appStore';
 
 export default function PoisonComparisonWidget() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const { pipelineState } = useAppStore();
 
-  useEffect(() => {
-    const handler = () => setRefreshKey(k => k + 1);
-    window.addEventListener("cycle_result", handler);
-    window.addEventListener("prediction_updated", handler);
-    return () => {
-      window.removeEventListener("cycle_result", handler);
-      window.removeEventListener("prediction_updated", handler);
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
+  const loadData = () => {
     setLoading(true);
     fetchPredictionComparison('AAPL')
-      .then((res) => {
-        if (mounted) setData(res);
-      })
+      .then((res) => setData(res))
       .catch(console.error)
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => { mounted = false; };
-  }, [refreshKey]);
+      .finally(() => setLoading(false));
+  };
+
+  // Initial load
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Auto-refresh when pipeline goes idle (after unlearn cycle completes)
+  useEffect(() => {
+    if (pipelineState.status === 'idle') {
+      const timer = setTimeout(loadData, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [pipelineState.status]);
 
   if (loading) {
     return (
@@ -43,11 +41,8 @@ export default function PoisonComparisonWidget() {
     );
   }
 
-  if (!data || (!data.before_poison && !data.after_unlearn)) {
-    return null;
-  }
-
-  const { before_poison, after_unlearn } = data;
+  const hasBefore = data?.before_poison;
+  const hasAfter = data?.after_unlearn;
 
   const renderPred = (title: string, pred: any, colorClass: string) => (
     <div className="flex-1 p-3 border border-border/50 bg-bg-main/50 rounded-sm">
@@ -70,20 +65,35 @@ export default function PoisonComparisonWidget() {
           </div>
         </div>
       ) : (
-        <div className="text-xs font-mono text-text-muted italic">No data</div>
+        <div className="text-xs font-mono text-text-muted italic">No data yet</div>
       )}
     </div>
   );
 
   return (
     <div className="bg-bg-card border border-border p-4">
-      <h3 className="font-barlow text-sm tracking-widest text-text-muted uppercase mb-3">
-        Poison vs Unlearn Prediction Impact
-      </h3>
-      <div className="flex flex-col sm:flex-row gap-4">
-        {renderPred('BEFORE POISON', before_poison, 'text-accent-danger')}
-        {renderPred('AFTER UNLEARN', after_unlearn, 'text-accent-mint')}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-barlow text-sm tracking-widest text-text-muted uppercase">
+          Poison vs Unlearn Prediction Impact
+        </h3>
+        <button
+          onClick={loadData}
+          className="px-2 py-0.5 border border-border text-text-muted font-mono text-[10px] hover:text-text-primary hover:border-accent-mint transition-colors"
+        >
+          REFRESH
+        </button>
       </div>
+      {!hasBefore && !hasAfter ? (
+        <div className="py-4 text-center font-mono text-xs text-text-muted">
+          <div className="mb-1">No comparison data yet</div>
+          <div className="text-[10px]">Inject poison → trigger unlearn cycle → predictions will appear here</div>
+        </div>
+      ) : (
+        <div className="flex flex-col sm:flex-row gap-4">
+          {renderPred('BEFORE POISON', hasBefore, 'text-accent-danger')}
+          {renderPred('AFTER UNLEARN', hasAfter, 'text-accent-mint')}
+        </div>
+      )}
     </div>
   );
 }

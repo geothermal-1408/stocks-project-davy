@@ -22,7 +22,7 @@ export default function PoisonLogPage() {
   const [injectSeverity, setInjectSeverity] = useState(3);
   const [injectResult, setInjectResult] = useState<string | null>(null);
 
-  const { events: poisonEvents, isLive: _isLive } = usePoisonLog(
+  const { events: poisonEvents, isLive: _isLive, refresh: refreshLog } = usePoisonLog(
     1, 100,
     tickerFilter === 'ALL' ? undefined : tickerFilter,
     typeFilter === 'ALL' ? undefined : typeFilter
@@ -270,7 +270,8 @@ export default function PoisonLogPage() {
                 onClick={async () => {
                   try {
                     const result = await injectPoison('AAPL', injectType, new Date().toISOString().split('T')[0]);
-                    setInjectResult(result.detected ? '✓ Injected & detected — test passed' : '✗ Injected but not detected — check thresholds');
+                    setInjectResult(result.detected ? '✓ Injected & detected — routed to forget buffer' : '✗ Injected but not detected — check thresholds');
+                    refreshLog(); // Refresh table to show new event
                   } catch {
                     setInjectResult('Backend unavailable — injection failed');
                   }

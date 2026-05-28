@@ -129,7 +129,6 @@ def run_unlearn(
             domain="stock",
             positive_ratio=positive_ratio,
             positive_factor=positive_factor,
-            gradient_checkpointing=True,
         )
 
         # Build trainer based on method
@@ -240,8 +239,4 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         method=args.method,
         learning_rate=args.lr,
-        epochs=args.epochs,
-        batch_size=args.batch_size,
-        max_steps=args.max_steps,
-        gradient_accumulation=args.gradient_accumulation,
     )

@@ -17,37 +17,50 @@ logger = logging.getLogger(__name__)
 
 
 def evaluate_predictions(
-    predictions_or_model_path: Union[list, str],
-    actuals_or_data_base: Union[list, str] = None,
+    predictions_or_model_path: Union[list, str, None] = None,
+    actuals_or_data_base: Union[list, str, None] = None,
     output_dir_or_ticker: Optional[str] = None,
+    *,
+    model_path: Optional[str] = None,
+    data_base: Optional[str] = None,
+    ticker: Optional[str] = None,
+    window_size: int = 30,
+    n_eval_windows: int = 30,
     **kwargs,
 ) -> dict:
     """Evaluate prediction quality metrics.
 
-    Can be called in two ways:
+    Can be called in three ways:
     1. evaluate_predictions(predictions_list, actuals_list, output_dir)
-    2. evaluate_predictions(model_path=..., data_base=..., ticker=...)
+    2. evaluate_predictions(model_path_str, data_base_str, ticker_str)
+    3. evaluate_predictions(model_path=..., data_base=..., ticker=...)
 
     Returns:
         Dict with mae, rmse, directional_acc.
     """
+    # Support keyword-only calling convention (from cycle_manager)
+    if predictions_or_model_path is None and model_path is not None:
+        _data_base = data_base or "./data"
+        _ticker = ticker or "AAPL"
+        return _evaluate_from_model(
+            model_path, _data_base, _ticker,
+            window_size=window_size,
+            n_eval_windows=n_eval_windows,
+        )
+
     # Dispatch based on argument types
     if isinstance(predictions_or_model_path, str):
-        model_path = predictions_or_model_path
-        data_base = actuals_or_data_base or kwargs.get("data_base", "./data")
-        ticker = output_dir_or_ticker or kwargs.get("ticker", "AAPL")
-        
-        # Pass kwargs to model evaluator
+        _model_path = predictions_or_model_path
+        _data_base = actuals_or_data_base or data_base or kwargs.get("data_base", "./data")
+        _ticker = output_dir_or_ticker or ticker or kwargs.get("ticker", "AAPL")
         return _evaluate_from_model(
-            model_path, 
-            data_base, 
-            ticker,
-            window_size=kwargs.get("window_size", 30),
-            n_eval_windows=kwargs.get("n_eval_windows", 30)
+            _model_path, _data_base, _ticker,
+            window_size=window_size,
+            n_eval_windows=n_eval_windows,
         )
     else:
         return _evaluate_from_lists(
-            predictions_or_model_path,
+            predictions_or_model_path or [],
             actuals_or_data_base or [],
             output_dir_or_ticker,
         )

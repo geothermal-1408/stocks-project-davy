@@ -89,7 +89,7 @@ class ModelRegistry:
             if os.path.islink(self.current_link):
                 os.unlink(self.current_link)
             elif os.path.isdir(self.current_link):
-                # On Windows, might be a junction or directory, safely remove
+                # On Windows, might be a junction or directory with contents
                 shutil.rmtree(self.current_link)
 
         # Create symlink (or junction on Windows)

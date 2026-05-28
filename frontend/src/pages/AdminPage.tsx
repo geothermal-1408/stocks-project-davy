@@ -1,15 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import { useAppStore } from "../store/appStore";
-import { useMetrics } from "../hooks/useMetrics";
-import {
-  triggerIngest,
-  triggerUnlearn,
-  injectPoison,
-  triggerRollback,
-  retryCycle,
-} from "../api/client";
-import type { PoisonType } from "../types";
-import PoisonComparisonWidget from "../components/dashboard/PoisonComparisonWidget";
+import { useState, useEffect, useRef } from 'react';
+import { useAppStore } from '../store/appStore';
+import { useMetrics } from '../hooks/useMetrics';
+import { triggerIngest, triggerUnlearn, injectPoison, triggerRollback, retryCycle } from '../api/client';
+import type { PoisonType } from '../types';
+import PoisonComparisonWidget from '../components/dashboard/PoisonComparisonWidget';
 
 const METHODS = ["AD", "AKL", "GA", "RANDOM_LABEL"] as const;
 const POISON_TYPES: PoisonType[] = [
@@ -113,34 +107,10 @@ export default function AdminPage() {
       epoch: "1/1",
     });
     try {
-      const methodMap: Record<string, string> = {
-        AD: "ascent_plus_descent",
-        AKL: "ascent_plus_kl_divergence",
-        GA: "gradient_ascent",
-        RANDOM_LABEL: "random_label",
-      };
-      const response = await triggerUnlearn(
-        methodMap[selectedMethod] || "ascent_plus_descent",
-        5e-6,
-        1,
-        stepsForMode
-      );
-      // The HTTP call returns immediately (background task).
-      // For dev mode, poll for completion after a delay
-      if (devMode) {
-        // Poll metrics to detect cycle completion
-        const pollInterval = setInterval(async () => {
-          const refreshed = await refetchMetrics();
-          // When metrics update with new cycle data, we know it's done
-        }, 5000);
-        // Auto-stop polling after 2 minutes
-        setTimeout(() => {
-          clearInterval(pollInterval);
-          setCycleTriggered(false);
-          setPipelineState({ status: "idle" });
-          refetchMetrics();
-        }, 120_000);
-      }
+      const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'ascent_plus_kl_divergence', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
+      await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent', 5e-6, 1, stepsForMode);
+      // Note: the HTTP call returns immediately (background task).
+      // Progress will be updated via SSE events → pipelineState.
     } catch {
       setCycleTriggered(false);
       setPipelineState({ status: "idle" });
@@ -702,39 +672,20 @@ export default function AdminPage() {
                 <button
                   onClick={async () => {
                     setCycleTriggered(true);
-                    setPipelineState({
-                      status: "unlearning",
-                      progress: 0,
-                      cycle: cycle.cycle_num,
-                      method: cycle.method || selectedMethod.toLowerCase(),
-                    });
+                    setPipelineState({ status: 'unlearning', progress: 0, cycle: cycle.cycle_num, method: cycle.method || selectedMethod.toLowerCase() });
                     try {
-                      const methodMap: Record<string, string> = {
-                        AD: "ascent_plus_descent",
-                        AKL: "ascent_plus_kl_divergence",
-                        GA: "gradient_ascent",
-                        RANDOM_LABEL: "random_label",
-                        ascent_plus_descent: "ascent_plus_descent",
-                        gradient_ascent: "gradient_ascent",
-                        ascent_plus_kl_divergence: "ascent_plus_kl_divergence",
-                        random_label: "random_label",
-                      };
-                      await retryCycle(
-                        cycle.cycle_num,
-                        methodMap[cycle.method] ||
-                          cycle.method ||
-                          "ascent_plus_descent"
-                      );
+                      const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'ascent_plus_kl_divergence', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label', ascent_plus_descent: 'ascent_plus_descent', gradient_ascent: 'gradient_ascent', ascent_plus_kl_divergence: 'ascent_plus_kl_divergence', random_label: 'random_label' };
+                      await retryCycle(cycle.cycle_num, methodMap[cycle.method] || cycle.method || 'ascent_plus_descent');
                     } catch {
                       setCycleTriggered(false);
-                      setPipelineState({ status: "idle" });
+                      setPipelineState({ status: 'idle' });
                     }
                   }}
                   disabled={isUnlearning}
                   className={`px-3 py-1 border font-mono text-[10px] transition-colors ${
                     isUnlearning
-                      ? "border-border text-text-muted cursor-not-allowed"
-                      : "border-accent-mint text-accent-mint hover:bg-accent-mint/10"
+                      ? 'border-border text-text-muted cursor-not-allowed'
+                      : 'border-accent-mint text-accent-mint hover:bg-accent-mint/10'
                   }`}
                 >
                   RETRY
