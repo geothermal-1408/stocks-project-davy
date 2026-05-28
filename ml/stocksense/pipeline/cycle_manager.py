@@ -325,7 +325,16 @@ class CycleManager:
                     new_metrics.retain_acc = eval_results.get("retain", {}).get("acc", 0)
                 else:
                     logger.info("No pre-tokenized eval data — computing PPL via evaluate_from_jsonl")
-                    eval_results = evaluate_from_jsonl(superlearn_output, forget_path, retain_path)
+                    max_samples = 40 if max_steps > 0 else None
+                    if max_samples:
+                        logger.info(f"DEV MODE: Limiting PPL eval to {max_samples} samples per buffer")
+                        
+                    eval_results = evaluate_from_jsonl(
+                        superlearn_output, 
+                        forget_path, 
+                        retain_path, 
+                        max_eval_samples=max_samples
+                    )
                     new_metrics.forget_ppl = eval_results.get("forget_ppl", 0)
                     new_metrics.retain_ppl = eval_results.get("retain_ppl", 0)
                     new_metrics.forget_acc = eval_results.get("forget_acc", 0)

@@ -140,6 +140,7 @@ def evaluate_from_jsonl(
     retain_jsonl: str,
     max_length: int = 256,
     seed: int = 42,
+    max_eval_samples: int = None,
 ) -> dict:
     """Evaluate model by tokenizing JSONL buffers on-the-fly.
 
@@ -180,10 +181,13 @@ def evaluate_from_jsonl(
 
             try:
                 dataset = tokenize_buffer(jsonl_path, tokenizer, max_length)
+                if max_eval_samples is not None and len(dataset) > max_eval_samples:
+                    dataset = dataset.select(range(max_eval_samples))
+                    
                 ppl, acc = _compute_ppl(model, dataset)
                 results[f"{key}_ppl"] = ppl
                 results[f"{key}_acc"] = acc
-                logger.info(f"[{key}] ppl={ppl:.2f}, acc={acc:.2f}% (from {line_count} JSONL entries)")
+                logger.info(f"[{key}] ppl={ppl:.2f}, acc={acc:.2f}% (from {len(dataset)}/{line_count} JSONL entries)")
             except Exception as e:
                 logger.warning(f"Failed to evaluate {key}: {e}")
                 results[f"{key}_ppl"] = 0.0
@@ -209,8 +213,15 @@ def _compute_ppl(model, dataset) -> tuple:
     model.eval()
     device = next(model.parameters()).device
 
+    import sys
+    try:
+        from tqdm import tqdm
+        loader_iter = tqdm(loader, desc="Computing PPL", file=sys.stdout)
+    except ImportError:
+        loader_iter = loader
+
     with torch.no_grad():
-        for batch in loader:
+        for batch in loader_iter:
             # Handle both tensor and list inputs from DataLoader
             if isinstance(batch["input_ids"], list):
                 if len(batch["input_ids"]) > 0 and isinstance(batch["input_ids"][0], torch.Tensor):
@@ -228,7 +239,16 @@ def _compute_ppl(model, dataset) -> tuple:
             else:
                 attention_mask = batch["attention_mask"].to(device)
                 
-            labels = input_ids.clone()
+            if "labels" in batch:
+                if isinstance(batch["labels"], list):
+                    if len(batch["labels"]) > 0 and isinstance(batch["labels"][0], torch.Tensor):
+                        labels = torch.stack(batch["labels"], dim=1).to(device)
+                    else:
+                        labels = torch.as_tensor(batch["labels"], device=device)
+                else:
+                    labels = batch["labels"].to(device)
+            else:
+                labels = input_ids.clone()
 
             outputs = model(
                 input_ids=input_ids,
