@@ -213,12 +213,18 @@ def _compute_ppl(model, dataset) -> tuple:
         for batch in loader:
             # Handle both tensor and list inputs from DataLoader
             if isinstance(batch["input_ids"], list):
-                input_ids = torch.as_tensor(batch["input_ids"], device=device)
+                if len(batch["input_ids"]) > 0 and isinstance(batch["input_ids"][0], torch.Tensor):
+                    input_ids = torch.stack(batch["input_ids"], dim=1).to(device)
+                else:
+                    input_ids = torch.as_tensor(batch["input_ids"], device=device)
             else:
                 input_ids = batch["input_ids"].to(device)
                 
             if isinstance(batch["attention_mask"], list):
-                attention_mask = torch.as_tensor(batch["attention_mask"], device=device)
+                if len(batch["attention_mask"]) > 0 and isinstance(batch["attention_mask"][0], torch.Tensor):
+                    attention_mask = torch.stack(batch["attention_mask"], dim=1).to(device)
+                else:
+                    attention_mask = torch.as_tensor(batch["attention_mask"], device=device)
             else:
                 attention_mask = batch["attention_mask"].to(device)
                 

@@ -49,6 +49,36 @@ async def run_cycle(
         if db:
             await _log_cycle_record(db, result)
 
+        # After cycle completes, generate a prediction for comparison
+        if result and not result.get("error") and not result.get("skipped"):
+            try:
+                from app.services.prediction_service import predict, reload_models
+                import os
+                # Reload models to pick up the new cycle
+                await reload_models()
+                # Generate prediction and log it
+                pred_result = await predict(ticker=os.environ.get("TICKER", "AAPL"))
+                if pred_result and not pred_result.get("error"):
+                    # Log to DB for comparison widget
+                    from app.models.prediction_log import PredictionLog
+                    pred = pred_result.get("prediction", {})
+                    log_entry = PredictionLog(
+                        ticker=os.environ.get("TICKER", "AAPL"),
+                        pred_close=pred.get("close"),
+                        pred_open=pred.get("open"),
+                        pred_high=pred.get("high"),
+                        pred_low=pred.get("low"),
+                        pred_vol=pred.get("vol"),
+                        model_cycle=result.get("cycle_num", -1),
+                        source=pred_result.get("source", "post_cycle"),
+                    )
+                    if db:
+                        db.add(log_entry)
+                        await db.commit()
+                    emit_event("prediction_updated", pred_result)
+            except Exception as e:
+                logger.warning(f"Post-cycle prediction failed (non-blocking): {e}")
+
         emit_event("cycle_complete", result)
         return result
 
@@ -122,6 +152,36 @@ async def retry_cycle(
         # Log to DB
         if db:
             await _log_cycle_record(db, result)
+
+        # After cycle completes, generate a prediction for comparison
+        if result and not result.get("error") and not result.get("skipped"):
+            try:
+                from app.services.prediction_service import predict, reload_models
+                import os
+                # Reload models to pick up the new cycle
+                await reload_models()
+                # Generate prediction and log it
+                pred_result = await predict(ticker=os.environ.get("TICKER", "AAPL"))
+                if pred_result and not pred_result.get("error"):
+                    # Log to DB for comparison widget
+                    from app.models.prediction_log import PredictionLog
+                    pred = pred_result.get("prediction", {})
+                    log_entry = PredictionLog(
+                        ticker=os.environ.get("TICKER", "AAPL"),
+                        pred_close=pred.get("close"),
+                        pred_open=pred.get("open"),
+                        pred_high=pred.get("high"),
+                        pred_low=pred.get("low"),
+                        pred_vol=pred.get("vol"),
+                        model_cycle=result.get("cycle_num", -1),
+                        source=pred_result.get("source", "post_cycle"),
+                    )
+                    if db:
+                        db.add(log_entry)
+                        await db.commit()
+                    emit_event("prediction_updated", pred_result)
+            except Exception as e:
+                logger.warning(f"Post-cycle prediction failed (non-blocking): {e}")
 
         emit_event("cycle_complete", result)
         return result

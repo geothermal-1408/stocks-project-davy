@@ -4,9 +4,21 @@ import { fetchPredictionComparison } from '../../api/client';
 export default function PoisonComparisonWidget() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setRefreshKey(k => k + 1);
+    window.addEventListener("cycle_result", handler);
+    window.addEventListener("prediction_updated", handler);
+    return () => {
+      window.removeEventListener("cycle_result", handler);
+      window.removeEventListener("prediction_updated", handler);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
     fetchPredictionComparison('AAPL')
       .then((res) => {
         if (mounted) setData(res);
@@ -16,7 +28,7 @@ export default function PoisonComparisonWidget() {
         if (mounted) setLoading(false);
       });
     return () => { mounted = false; };
-  }, []);
+  }, [refreshKey]);
 
   if (loading) {
     return (

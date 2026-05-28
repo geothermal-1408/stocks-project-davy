@@ -217,10 +217,10 @@ class CycleManager:
                     retain_count = sum(1 for _ in f)
 
             logger.info(
-                "Cycle %s buffer counts: forget=%s retain=%s",
+                "Cycle %s buffer state: forget_path=%s (exists=%s, count=%d), retain_path=%s (exists=%s, count=%d)",
                 cycle_num,
-                forget_count,
-                retain_count,
+                forget_path, os.path.exists(forget_path), forget_count,
+                retain_path, os.path.exists(retain_path), retain_count,
             )
 
             if forget_count == 0:
@@ -344,11 +344,33 @@ class CycleManager:
                 except Exception as e2:
                     logger.warning(f"PPL fallback also failed: {e2}")
 
+            # 4a-2. PPL verification
+            if new_metrics.forget_ppl == 0.0 and new_metrics.retain_ppl == 0.0:
+                logger.warning(
+                    "⚠ Both forget_ppl and retain_ppl are 0.0 — "
+                    "evaluation likely failed silently. Check model path: %s",
+                    superlearn_output,
+                )
+
             # 4b. Prediction evaluation (MAE + Directional Accuracy)
             if max_steps > 0:
-                logger.info("DEV MODE: Skipping main predictor inference")
-                new_metrics.mae_validation = 0.0
-                new_metrics.directional_acc = 0.0
+                logger.info("DEV MODE: Running prediction eval with reduced windows")
+                try:
+                    from stocksense.evaluation.prediction_eval import evaluate_predictions
+                    ticker = os.environ.get("TICKER", "AAPL")
+                    pred_results = evaluate_predictions(
+                        superlearn_output,
+                        self.data_base,
+                        ticker,
+                        window_size=30,
+                        n_eval_windows=5  # Reduced for dev
+                    )
+                    new_metrics.mae_validation = pred_results.get("mae")
+                    new_metrics.directional_acc = pred_results.get("directional_acc", 0.0)
+                except Exception as e:
+                    logger.warning(f"DEV MODE prediction eval failed: {e}")
+                    new_metrics.mae_validation = 0.0
+                    new_metrics.directional_acc = 0.0
             else:
                 try:
                     from stocksense.evaluation.prediction_eval import evaluate_predictions

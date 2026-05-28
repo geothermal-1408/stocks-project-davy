@@ -70,6 +70,11 @@ export function usePipelineStream() {
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('cycle_result', { detail: { error: data.error } }));
             }
+          } else if (e.event === 'prediction_updated') {
+            const data = JSON.parse(e.data);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('prediction_updated', { detail: data }));
+            }
           }
         },
         onclose() {
