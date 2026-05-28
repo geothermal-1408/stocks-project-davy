@@ -297,6 +297,40 @@ async def _inject_simplified(
     window_id = str(uuid.uuid4())
 
     if detected:
+        # Route simplified injected sample to forget buffer so unlearn can consume it.
+        try:
+            from stocksense.data.buffer_router import route_window
+
+            lines = []
+            for _, row in window.iterrows():
+                lines.append(
+                    "date={date} open={open} high={high} low={low} close={close} vol={vol}".format(
+                        date=row.get("date", ""),
+                        open=row.get("open", ""),
+                        high=row.get("high", ""),
+                        low=row.get("low", ""),
+                        close=row.get("close", ""),
+                        vol=row.get("vol", row.get("volume", "")),
+                    )
+                )
+            injected_text = "\n".join(lines)
+
+            route_window(
+                injected_text,
+                is_poisoned=True,
+                reason=f"synthetic_injection:{reason}",
+                data_base=settings.DATA_BASE,
+                meta={
+                    "ticker": ticker,
+                    "window_start": window_start,
+                    "window_end": window_end,
+                    "source": "admin_inject",
+                    "inject_type": inject_type,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Failed to route simplified injected sample to forget buffer: {e}")
+
         # Log to DB
         await log_poison_event(
             db, ticker,

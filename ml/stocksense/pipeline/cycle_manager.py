@@ -16,6 +16,7 @@ import logging
 import os
 import time
 import sys
+from pathlib import Path
 
 # Add the ml directory to sys.path so 'stocksense' module can be imported
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -25,11 +26,48 @@ from typing import Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
+def _resolve_buffer_dir(data_base: str) -> str:
+    """Normalize the buffer directory path.
+
+    Accepts either:
+    - DATA_BASE pointing at ml/data
+    - DATA_BASE pointing directly at ml/data/buffers
+    """
+    normalized = os.path.normpath(data_base)
+    if os.path.basename(normalized) == "buffers":
+        return normalized
+    return os.path.join(normalized, "buffers")
+
+
+def _find_latest_archived_retain(buffer_dir: str) -> Optional[str]:
+    """Return the newest archived retain buffer path, if available.
+
+    Looks under buffers/archive/cycle_*/ for retain_buffer.jsonl
+    (including timestamp-suffixed variants).
+    """
+    archive_dir = Path(buffer_dir) / "archive"
+    if not archive_dir.exists():
+        return None
+
+    candidates = []
+    for path in archive_dir.glob("cycle_*/retain_buffer.jsonl*"):
+        if path.is_file() and path.stat().st_size > 0:
+            candidates.append(path)
+
+    if not candidates:
+        return None
+
+    latest = max(candidates, key=lambda p: p.stat().st_mtime)
+    return str(latest)
+
+
 @dataclass
 class Metrics:
     """Cycle evaluation metrics for gate checks."""
     forget_ppl: float = 0.0
     retain_ppl: float = 0.0
+    forget_acc: float = 0.0
+    retain_acc: float = 0.0
     mae_validation: Optional[float] = None
     directional_acc: float = 0.0
     mia_auc: float = 0.5
@@ -103,7 +141,7 @@ class CycleManager:
             "OUTPUT_BASE", "./output/stock"
         )
         self.data_base = data_base or os.environ.get(
-            "DATA_BASE", "./data/buffers"
+            "DATA_BASE", "./data"
         )
 
     def run_cycle(
@@ -156,10 +194,17 @@ class CycleManager:
         _notify(callback, "tokenizing", 10)
 
         try:
-            # --- Step 1: Locate buffers (always in data_base/buffers/) ---
-            buffer_dir = os.path.join(self.data_base, "buffers")
+            # --- Step 1: Locate buffers ---
+            buffer_dir = _resolve_buffer_dir(self.data_base)
             forget_path = os.path.join(buffer_dir, "forget_buffer.jsonl")
             retain_path = os.path.join(buffer_dir, "retain_buffer.jsonl")
+
+            logger.info(
+                "Cycle %s buffer paths: data_base=%s buffer_dir=%s",
+                cycle_num,
+                self.data_base,
+                buffer_dir,
+            )
 
             forget_count = 0
             if os.path.exists(forget_path):
@@ -171,13 +216,42 @@ class CycleManager:
                 with open(retain_path) as f:
                     retain_count = sum(1 for _ in f)
 
+            logger.info(
+                "Cycle %s buffer counts: forget=%s retain=%s",
+                cycle_num,
+                forget_count,
+                retain_count,
+            )
+
             if forget_count == 0:
                 logger.warning("No forget buffer data — skipping cycle")
                 return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_forget_buffer"}
-                
+
             if retain_count == 0:
-                logger.warning("No retain buffer data — skipping cycle")
-                return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_retain_buffer"}
+                fallback_retain = _find_latest_archived_retain(buffer_dir)
+                if fallback_retain:
+                    with open(fallback_retain) as f:
+                        retain_count = sum(1 for _ in f)
+                    if retain_count > 0:
+                        logger.warning(
+                            "Active retain buffer empty; reusing archived retain snapshot: %s",
+                            fallback_retain,
+                        )
+                        retain_path = fallback_retain
+                    else:
+                        logger.warning("Archived retain snapshot is empty — skipping cycle")
+                        return {
+                            "cycle_num": cycle_num,
+                            "skipped": True,
+                            "reason": "empty_retain_buffer",
+                        }
+                else:
+                    logger.warning("No retain buffer data — skipping cycle")
+                    return {
+                        "cycle_num": cycle_num,
+                        "skipped": True,
+                        "reason": "empty_retain_buffer",
+                    }
             # --- Step 2: Run unlearning ---
             _notify(callback, "unlearning", 30)
             current_model = registry.get_current_model_path()
@@ -236,7 +310,7 @@ class CycleManager:
 
             # 4a. PPL evaluation — tokenize from JSONL on-the-fly
             try:
-                from stocksense.evaluation.run_eval import evaluate_model
+                from stocksense.evaluation.run_eval import evaluate_model, evaluate_from_jsonl
                 tokenized_base = os.environ.get("TOKENIZED_BASE", "./tokenized_dataset")
                 forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
                 retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
@@ -247,11 +321,19 @@ class CycleManager:
                     )
                     new_metrics.forget_ppl = eval_results.get("forget", {}).get("ppl", 0)
                     new_metrics.retain_ppl = eval_results.get("retain", {}).get("ppl", 0)
+                    new_metrics.forget_acc = eval_results.get("forget", {}).get("acc", 0)
+                    new_metrics.retain_acc = eval_results.get("retain", {}).get("acc", 0)
                 else:
-                    logger.info("No pre-tokenized eval data — computing PPL from buffer files")
-                    new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
-                        superlearn_output, forget_path, retain_path
-                    )
+                    logger.info("No pre-tokenized eval data — computing PPL via evaluate_from_jsonl")
+                    eval_results = evaluate_from_jsonl(superlearn_output, forget_path, retain_path)
+                    new_metrics.forget_ppl = eval_results.get("forget_ppl", 0)
+                    new_metrics.retain_ppl = eval_results.get("retain_ppl", 0)
+                    new_metrics.forget_acc = eval_results.get("forget_acc", 0)
+                    new_metrics.retain_acc = eval_results.get("retain_acc", 0)
+                    
+                    os.makedirs(eval_output, exist_ok=True)
+                    with open(os.path.join(eval_output, "eval_results.json"), "w") as f:
+                        json.dump(eval_results, f, indent=2)
             except Exception as e:
                 logger.warning(f"Evaluation failed: {e}")
                 # Still try the lightweight PPL fallback
@@ -263,20 +345,25 @@ class CycleManager:
                     logger.warning(f"PPL fallback also failed: {e2}")
 
             # 4b. Prediction evaluation (MAE + Directional Accuracy)
-            try:
-                from stocksense.evaluation.prediction_eval import evaluate_predictions
-                ticker = os.environ.get("TICKER", "AAPL")
-                pred_results = evaluate_predictions(
-                    superlearn_output,
-                    self.data_base,
-                    ticker,
-                    window_size=30,
-                    n_eval_windows=10 if max_steps > 0 else 30
-                )
-                new_metrics.mae_validation = pred_results.get("mae")
-                new_metrics.directional_acc = pred_results.get("directional_acc", 0.0)
-            except Exception as e:
-                logger.warning(f"Prediction evaluation failed: {e}")
+            if max_steps > 0:
+                logger.info("DEV MODE: Skipping main predictor inference")
+                new_metrics.mae_validation = 0.0
+                new_metrics.directional_acc = 0.0
+            else:
+                try:
+                    from stocksense.evaluation.prediction_eval import evaluate_predictions
+                    ticker = os.environ.get("TICKER", "AAPL")
+                    pred_results = evaluate_predictions(
+                        superlearn_output,
+                        self.data_base,
+                        ticker,
+                        window_size=30,
+                        n_eval_windows=30
+                    )
+                    new_metrics.mae_validation = pred_results.get("mae")
+                    new_metrics.directional_acc = pred_results.get("directional_acc", 0.0)
+                except Exception as e:
+                    logger.warning(f"Prediction evaluation failed: {e}")
 
             # 4c. MIA evaluation
             try:
@@ -365,6 +452,8 @@ class CycleManager:
                 "gate_failure": gate_failure if not deployed else None,
                 "forget_ppl": _safe_float(new_metrics.forget_ppl),
                 "retain_ppl": _safe_float(new_metrics.retain_ppl),
+                "forget_acc": _safe_float(new_metrics.forget_acc),
+                "retain_acc": _safe_float(new_metrics.retain_acc),
                 "mae_validation": _safe_float(new_metrics.mae_validation),
                 "directional_acc": _safe_float(new_metrics.directional_acc),
                 "mia_auc": _safe_float(new_metrics.mia_auc),
@@ -395,6 +484,8 @@ class CycleManager:
                 return Metrics(
                     forget_ppl=entry.get("forget_ppl", 0),
                     retain_ppl=entry.get("retain_ppl", 0),
+                    forget_acc=entry.get("forget_acc", 0),
+                    retain_acc=entry.get("retain_acc", 0),
                     mae_validation=entry.get("mae_validation"),
                     directional_acc=entry.get("directional_acc", 0),
                     mia_auc=entry.get("mia_auc", 0.5),

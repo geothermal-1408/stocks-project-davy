@@ -164,46 +164,64 @@ def evaluate_from_jsonl(
     model.eval()
 
     results = {}
-    for key, jsonl_path in [("forget", forget_jsonl), ("retain", retain_jsonl)]:
-        if not os.path.exists(jsonl_path):
-            logger.warning(f"{key} JSONL not found: {jsonl_path}")
-            results[f"{key}_ppl"] = 0.0
-            continue
+    try:
+        for key, jsonl_path in [("forget", forget_jsonl), ("retain", retain_jsonl)]:
+            if not os.path.exists(jsonl_path):
+                logger.warning(f"{key} JSONL not found: {jsonl_path}")
+                results[f"{key}_ppl"] = 0.0
+                continue
 
-        # Count lines
-        with open(jsonl_path) as f:
-            line_count = sum(1 for _ in f)
-        if line_count == 0:
-            results[f"{key}_ppl"] = 0.0
-            continue
+            # Count lines
+            with open(jsonl_path) as f:
+                line_count = sum(1 for _ in f)
+            if line_count == 0:
+                results[f"{key}_ppl"] = 0.0
+                continue
 
-        try:
-            dataset = tokenize_buffer(jsonl_path, tokenizer, max_length)
-            ppl = _compute_ppl(model, dataset)
-            results[f"{key}_ppl"] = ppl
-            logger.info(f"[{key}] ppl={ppl:.2f} (from {line_count} JSONL entries)")
-        except Exception as e:
-            logger.warning(f"Failed to evaluate {key}: {e}")
-            results[f"{key}_ppl"] = 0.0
+            try:
+                dataset = tokenize_buffer(jsonl_path, tokenizer, max_length)
+                ppl, acc = _compute_ppl(model, dataset)
+                results[f"{key}_ppl"] = ppl
+                results[f"{key}_acc"] = acc
+                logger.info(f"[{key}] ppl={ppl:.2f}, acc={acc:.2f}% (from {line_count} JSONL entries)")
+            except Exception as e:
+                logger.warning(f"Failed to evaluate {key}: {e}")
+                results[f"{key}_ppl"] = 0.0
+                results[f"{key}_acc"] = 0.0
 
-    return results
+        return results
+    finally:
+        del model
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
-def _compute_ppl(model, dataset) -> float:
-    """Compute perplexity on a tokenized dataset."""
+def _compute_ppl(model, dataset) -> tuple:
+    """Compute perplexity and accuracy on a tokenized dataset."""
     from torch.utils.data import DataLoader
 
     loader = DataLoader(dataset, batch_size=4, shuffle=False)
     total_loss = 0.0
     total_tokens = 0
+    total_correct = 0
 
     model.eval()
     device = next(model.parameters()).device
 
     with torch.no_grad():
         for batch in loader:
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
+            # Handle both tensor and list inputs from DataLoader
+            if isinstance(batch["input_ids"], list):
+                input_ids = torch.as_tensor(batch["input_ids"], device=device)
+            else:
+                input_ids = batch["input_ids"].to(device)
+                
+            if isinstance(batch["attention_mask"], list):
+                attention_mask = torch.as_tensor(batch["attention_mask"], device=device)
+            else:
+                attention_mask = batch["attention_mask"].to(device)
+                
             labels = input_ids.clone()
 
             outputs = model(
@@ -211,19 +229,30 @@ def _compute_ppl(model, dataset) -> float:
                 attention_mask=attention_mask,
                 labels=labels,
             )
-            # Count non-pad tokens
-            n_tokens = attention_mask.sum().item()
-            total_loss += outputs.loss.item() * n_tokens
-            total_tokens += n_tokens
+            
+            logits = outputs.logits
+            shift_logits = logits[..., :-1, :].contiguous()
+            shift_labels = labels[..., 1:].contiguous()
+            shift_mask = attention_mask[..., 1:].contiguous()
+            
+            preds = shift_logits.argmax(dim=-1)
+            correct = (preds == shift_labels) & shift_mask.bool()
+            total_correct += correct.sum().item()
+            
+            n_tokens = shift_mask.sum().item()
+            if n_tokens > 0:
+                total_loss += outputs.loss.item() * n_tokens
+                total_tokens += n_tokens
 
     if total_tokens == 0:
-        return float("inf")
+        return float("inf"), 0.0
 
     avg_loss = total_loss / total_tokens
+    acc = (total_correct / total_tokens) * 100.0
     try:
-        return math.exp(avg_loss)
+        return math.exp(avg_loss), acc
     except OverflowError:
-        return float("inf")
+        return float("inf"), acc
 
 
 if __name__ == "__main__":
@@ -237,4 +266,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
-    evaluate_model(args.model_path, args.forget_data, args.retain_data, args.output_dir)
+    
+    if args.forget_data.endswith('.jsonl') or args.retain_data.endswith('.jsonl'):
+        res = evaluate_from_jsonl(args.model_path, args.forget_data, args.retain_data)
+        
+        # Save results similar to evaluate_model
+        os.makedirs(args.output_dir, exist_ok=True)
+        results_path = os.path.join(args.output_dir, "eval_results.json")
+        with open(results_path, "w") as f:
+            json.dump(res, f, indent=2)
+        logger.info(f"Evaluation results saved to {results_path}")
+    else:
+        evaluate_model(args.model_path, args.forget_data, args.retain_data, args.output_dir)

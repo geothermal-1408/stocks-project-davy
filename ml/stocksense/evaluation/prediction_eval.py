@@ -36,7 +36,15 @@ def evaluate_predictions(
         model_path = predictions_or_model_path
         data_base = actuals_or_data_base or kwargs.get("data_base", "./data")
         ticker = output_dir_or_ticker or kwargs.get("ticker", "AAPL")
-        return _evaluate_from_model(model_path, data_base, ticker)
+        
+        # Pass kwargs to model evaluator
+        return _evaluate_from_model(
+            model_path, 
+            data_base, 
+            ticker,
+            window_size=kwargs.get("window_size", 30),
+            n_eval_windows=kwargs.get("n_eval_windows", 30)
+        )
     else:
         return _evaluate_from_lists(
             predictions_or_model_path,
@@ -174,4 +182,11 @@ def _evaluate_from_model(
     except Exception as e:
         logger.error(f"Model evaluation failed: {e}")
         return {"mae": float("inf"), "directional_acc": 0.0}
+        
+    finally:
+        if 'predictor' in locals():
+            del predictor
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 

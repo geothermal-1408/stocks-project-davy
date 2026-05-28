@@ -129,6 +129,7 @@ def run_unlearn(
             domain="stock",
             positive_ratio=positive_ratio,
             positive_factor=positive_factor,
+            gradient_checkpointing=True,
         )
 
         # Build trainer based on method
@@ -225,6 +226,10 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", default="./output/stock/unlearn")
     parser.add_argument("--method", default="ascent_plus_descent")
     parser.add_argument("--lr", type=float, default=5e-6)
+    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=1)
+    parser.add_argument("--max_steps", type=int, default=-1)
+    parser.add_argument("--gradient_accumulation", type=int, default=8)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -235,4 +240,8 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         method=args.method,
         learning_rate=args.lr,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        max_steps=args.max_steps,
+        gradient_accumulation=args.gradient_accumulation,
     )

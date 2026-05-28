@@ -58,6 +58,48 @@ class StockPredictor:
         else:
             real_path = self.model_path
 
+        # Resolve cases where `real_path` is a wrapper directory (e.g. contains
+        # a single subfolder like 'stocksense-qwen/...'). Try to locate a
+        # recognizable model directory by searching for common artifacts
+        # (config.json, tokenizer files, or weight files) within up to two
+        # levels of depth.
+        def _looks_like_model_dir(p: str) -> bool:
+            if not os.path.isdir(p):
+                return False
+            candidates = ["config.json", "tokenizer.json", "tokenizer_config.json", "pytorch_model.bin"]
+            for c in candidates:
+                if os.path.exists(os.path.join(p, c)):
+                    return True
+            # safetensors or bin weight files
+            for fp in os.listdir(p):
+                if fp.endswith(".safetensors") or fp.endswith(".bin"):
+                    return True
+            return False
+
+        if not _looks_like_model_dir(real_path):
+            if os.path.isdir(real_path):
+                # First look at immediate children
+                for entry in os.listdir(real_path):
+                    subdir = os.path.join(real_path, entry)
+                    if _looks_like_model_dir(subdir):
+                        real_path = subdir
+                        logger.info(f"Found model in subdirectory: {real_path}")
+                        break
+                else:
+                    # Then look one level deeper (grandchildren)
+                    for entry in os.listdir(real_path):
+                        subdir = os.path.join(real_path, entry)
+                        if not os.path.isdir(subdir):
+                            continue
+                        for g in os.listdir(subdir):
+                            grand = os.path.join(subdir, g)
+                            if _looks_like_model_dir(grand):
+                                real_path = grand
+                                logger.info(f"Found model in nested subdirectory: {real_path}")
+                                break
+                        if _looks_like_model_dir(real_path):
+                            break
+
         if not force and self._loaded_path == real_path and self._model is not None:
             return
 

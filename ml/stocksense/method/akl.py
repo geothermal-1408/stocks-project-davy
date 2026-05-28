@@ -21,8 +21,10 @@ class AscentPlusKLDivergenceTrainer(Trainer):
     def __init__(self, pretrain_model=None, **kwargs):
         super().__init__(**kwargs)
         device = self.accelerator.device
+        pretrain_model.eval()
         pretrain_model.to(device)
         self.pretrain_model = pretrain_model
+        self.pretrain_device = device
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         if "factor" not in inputs.keys():
@@ -95,6 +97,7 @@ def compute_kl(pretrained_model, current_model, batch, device):
     Returns:
         The KL loss.
     """
+    # Current model runs on the training device (likely GPU).
     normal_outputs = current_model(
         batch["input_ids"].to(device),
         attention_mask=batch["attention_mask"].to(device),
@@ -108,8 +111,9 @@ def compute_kl(pretrained_model, current_model, batch, device):
             labels=batch["labels"].to(device),
         )
 
-    # P: pretrained model; Q: current model.
-    prob_p = torch.nn.functional.softmax(pretrained_outputs.logits, -1)
+    # P: pretrained model; Q: current model. Move pretrained logits to device
+    # and detach so they don't contribute to the autograd graph.
+    prob_p = torch.nn.functional.softmax(pretrained_outputs.logits.detach(), -1)
     prob_q = torch.nn.functional.softmax(normal_outputs.logits, -1)
 
     loss = -(prob_p * torch.log(prob_q + 1e-12)).sum(-1).mean()
