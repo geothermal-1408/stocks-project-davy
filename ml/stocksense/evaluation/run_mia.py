@@ -35,6 +35,7 @@ def _supports_tf32():
 
 def fig_fpr_tpr(all_output, output_dir):
     """Generate ROC curves and compute AUC for MIA evaluation."""
+    aucs = {}
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -42,8 +43,7 @@ def fig_fpr_tpr(all_output, output_dir):
         from sklearn.metrics import auc, roc_curve
     except ImportError:
         logger.warning("matplotlib/sklearn not available for MIA plots")
-        # Still write AUC text if possible
-        return
+        return aucs
 
     answers = []
     metric2predictions = defaultdict(list)
@@ -70,6 +70,7 @@ def fig_fpr_tpr(all_output, output_dir):
             f.write(f"{metric}   AUC {auc_val:.4f}, Acc {acc:.4f}, TPR@5%FPR {low:.4f}\n")
             plt.plot(fpr, tpr, label=f"{metric} auc={auc_val:.3f}")
             logger.info(f"MIA {metric}: AUC={auc_val:.4f} Acc={acc:.4f}")
+            aucs[metric] = auc_val
 
     plt.semilogx()
     plt.semilogy()
@@ -82,6 +83,7 @@ def fig_fpr_tpr(all_output, output_dir):
     plt.tight_layout()
     plt.savefig(f"{output_dir}/auc.png")
     plt.close()
+    return aucs
 
 
 def run_mia(
@@ -114,8 +116,17 @@ def run_mia(
     if len(tokenizer) > model.get_input_embeddings().weight.shape[0]:
         model.resize_token_embeddings(len(tokenizer))
 
-    forget_ds = torch.load(forget_data_path, weights_only=False)
-    retain_ds = torch.load(retain_data_path, weights_only=False)
+    if forget_data_path.endswith(".jsonl"):
+        from stocksense.data.buffer_tokenizer import tokenize_buffer
+        forget_ds = tokenize_buffer(forget_data_path, tokenizer, max_length=256)
+    else:
+        forget_ds = torch.load(forget_data_path, weights_only=False)
+        
+    if retain_data_path.endswith(".jsonl"):
+        from stocksense.data.buffer_tokenizer import tokenize_buffer
+        retain_ds = tokenize_buffer(retain_data_path, tokenizer, max_length=256)
+    else:
+        retain_ds = torch.load(retain_data_path, weights_only=False)
 
     # Balance sizes
     n = min(len(forget_ds), len(retain_ds))
@@ -190,10 +201,10 @@ def run_mia(
 
     random.seed(0)
     random.shuffle(all_results)
-    fig_fpr_tpr(all_results, output_dir)
+    aucs = fig_fpr_tpr(all_results, output_dir)
 
     logger.info(f"MIA results saved to {output_dir}/auc.txt")
-    return {"output_dir": output_dir, "num_samples": len(all_results)}
+    return aucs if aucs else {}
 
 
 if __name__ == "__main__":

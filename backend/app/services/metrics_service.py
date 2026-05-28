@@ -36,7 +36,7 @@ async def get_metrics(db: AsyncSession) -> dict:
     has no cycle records (e.g. cycles run via CLI).  Returns None for
     metric values when no cycle has ever been run so the frontend can
     display '—' placeholder."""
-    # Get latest cycle from DB
+    # Get latest cycle from DB (prefer deployed, fall back to any)
     result = await db.execute(
         select(CycleRecord)
         .where(CycleRecord.deployed == True)
@@ -44,6 +44,15 @@ async def get_metrics(db: AsyncSession) -> dict:
         .limit(1)
     )
     latest_cycle = result.scalar_one_or_none()
+
+    # If no deployed cycle, use the most recent cycle regardless
+    if latest_cycle is None:
+        any_result = await db.execute(
+            select(CycleRecord)
+            .order_by(desc(CycleRecord.cycle_num))
+            .limit(1)
+        )
+        latest_cycle = any_result.scalar_one_or_none()
 
     # Get cycle history from DB
     hist_result = await db.execute(

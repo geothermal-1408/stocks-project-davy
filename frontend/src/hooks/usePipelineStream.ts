@@ -58,9 +58,18 @@ export function usePipelineStream() {
             const data = JSON.parse(e.data);
             setPipelineState({ status: 'unlearning', progress: data.pct, method: data.step });
           } else if (e.event === 'cycle_complete') {
+            const data = JSON.parse(e.data);
             setPipelineState({ status: 'idle' });
+            // Store cycle result for display
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('cycle_result', { detail: data }));
+            }
           } else if (e.event === 'cycle_error') {
+            const data = JSON.parse(e.data);
             setPipelineState({ status: 'idle' });
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('cycle_result', { detail: { error: data.error } }));
+            }
           }
         },
         onclose() {

@@ -30,7 +30,10 @@ export default function AdminPage() {
 
   // Derive unlearning state from the shared store (updated by SSE events)
   const isUnlearning = pipelineState.status === 'unlearning' || cycleTriggered;
-  const unlearnProgress = pipelineState.status === 'unlearning' ? (pipelineState.progress ?? 0) : 0;
+
+  // Cycle result state
+  const [cycleResult, setCycleResult] = useState<any>(null);
+  const [devMode, setDevMode] = useState(false);
 
   // Reset local trigger flag when pipeline goes idle (cycle finished)
   const prevStatus = useRef(pipelineState.status);
@@ -41,6 +44,31 @@ export default function AdminPage() {
     }
     prevStatus.current = pipelineState.status;
   }, [pipelineState.status, refetchMetrics]);
+
+  // Safety timeout: if cycleTriggered stays true for too long (dev: 120s, prod: 600s),
+  // reset it automatically to prevent stuck button
+  useEffect(() => {
+    if (!cycleTriggered) return;
+    const timeoutMs = devMode ? 120_000 : 600_000;
+    const timer = setTimeout(() => {
+      setCycleTriggered(false);
+      setPipelineState({ status: 'idle' });
+    }, timeoutMs);
+    return () => clearTimeout(timer);
+  }, [cycleTriggered, devMode, setPipelineState]);
+
+  // Listen for cycle_result events from SSE
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setCycleResult(detail);
+      setCycleTriggered(false);
+      setPipelineState({ status: 'idle' });
+      refetchMetrics();
+    };
+    window.addEventListener('cycle_result', handler);
+    return () => window.removeEventListener('cycle_result', handler);
+  }, [setPipelineState, refetchMetrics]);
 
   const handleFetch = async () => {
     setPipelineState({ status: 'ingesting', ticker: fetchTicker, progress: 0, total: 30 });
@@ -53,17 +81,32 @@ export default function AdminPage() {
       setPipelineState({ status: 'idle' });
     }
   };
-  const [devMode, setDevMode] = useState(false);
+
 
   const handleTriggerCycle = async () => {
     setCycleTriggered(true);
+    setCycleResult(null);
     const stepsForMode = devMode ? 10 : -1;
-    setPipelineState({ status: 'unlearning', progress: 0, cycle: (metrics.current_cycle || 7) + 1, method: selectedMethod.toLowerCase(), epoch: '1/1' });
+    setPipelineState({ status: 'unlearning', progress: 0, cycle: (metrics.current_cycle || 0) + 1, method: selectedMethod.toLowerCase(), epoch: '1/1' });
     try {
       const methodMap: Record<string, string> = { AD: 'ascent_plus_descent', AKL: 'ascent_plus_kl_divergence', GA: 'gradient_ascent', RANDOM_LABEL: 'random_label' };
-      await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent', 5e-6, 1, stepsForMode);
-      // Note: the HTTP call returns immediately (background task).
-      // Progress will be updated via SSE events → pipelineState.
+      const response = await triggerUnlearn(methodMap[selectedMethod] || 'ascent_plus_descent', 5e-6, 1, stepsForMode);
+      // The HTTP call returns immediately (background task).
+      // For dev mode, poll for completion after a delay
+      if (devMode) {
+        // Poll metrics to detect cycle completion
+        const pollInterval = setInterval(async () => {
+          const refreshed = await refetchMetrics();
+          // When metrics update with new cycle data, we know it's done
+        }, 5000);
+        // Auto-stop polling after 2 minutes
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          setCycleTriggered(false);
+          setPipelineState({ status: 'idle' });
+          refetchMetrics();
+        }, 120_000);
+      }
     } catch {
       setCycleTriggered(false);
       setPipelineState({ status: 'idle' });
@@ -145,25 +188,90 @@ export default function AdminPage() {
           <button
             onClick={handleTriggerCycle}
             disabled={isUnlearning}
-            className={`w-full py-2 border font-mono text-sm transition-colors mb-3 ${
+            className={`w-full py-2.5 border font-mono text-sm transition-all mb-3 ${
               isUnlearning
-                ? 'border-accent-danger/50 text-accent-danger/50 cursor-not-allowed'
+                ? 'border-accent-danger/40 text-accent-danger/60 cursor-not-allowed bg-accent-danger/5 animate-pulse'
                 : 'border-accent-danger text-accent-danger hover:bg-accent-danger hover:text-white'
             }`}
           >
-            {isUnlearning ? `UNLEARNING... ${Math.min(unlearnProgress, 100)}%` : 'TRIGGER CYCLE'}
+            {isUnlearning ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="inline-block w-3 h-3 border-2 border-accent-danger/40 border-t-accent-danger rounded-full animate-spin" />
+                EXECUTING...
+              </span>
+            ) : 'TRIGGER CYCLE'}
           </button>
-          {isUnlearning && (
-            <div className="h-1 bg-bg-hover mb-3">
-              <div
-                className="h-full bg-accent-danger transition-all duration-300"
-                style={{ width: `${Math.min(unlearnProgress, 100)}%` }}
-              />
-            </div>
-          )}
           <button className="w-full py-2 border border-accent-danger bg-accent-danger/10 text-accent-danger font-mono text-xs">
             EMERGENCY UNLEARN (GA)
           </button>
+
+          {/* Cycle Result Display */}
+          {cycleResult && (
+            <div className={`mt-3 p-3 border font-mono text-[11px] space-y-2 ${
+              cycleResult.error
+                ? 'border-accent-danger/40 bg-accent-danger/5'
+                : cycleResult.deployed
+                  ? 'border-accent-mint/40 bg-accent-mint/5'
+                  : 'border-accent-warning/40 bg-accent-warning/5'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className={`font-bold text-xs uppercase ${
+                  cycleResult.error ? 'text-accent-danger' : cycleResult.deployed ? 'text-accent-mint' : 'text-accent-warning'
+                }`}>
+                  {cycleResult.error ? '✗ CYCLE FAILED' : cycleResult.deployed ? '✓ CYCLE DEPLOYED' : '⚠ CYCLE COMPLETED (GATE FAILED)'}
+                </span>
+                <button
+                  onClick={() => setCycleResult(null)}
+                  className="text-text-muted hover:text-text-primary text-xs"
+                >✕</button>
+              </div>
+              {cycleResult.error ? (
+                <div className="text-accent-danger">{cycleResult.error}</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Cycle</span>
+                      <span className="text-text-primary">#{cycleResult.cycle_num}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Method</span>
+                      <span className="text-text-primary">{cycleResult.method}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Forget PPL</span>
+                      <span className="text-accent-mint">{cycleResult.forget_ppl?.toFixed(2) ?? '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Retain PPL</span>
+                      <span className="text-text-primary">{cycleResult.retain_ppl?.toFixed(2) ?? '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">MAE</span>
+                      <span className="text-text-primary">{cycleResult.mae_validation?.toFixed(4) ?? '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Dir Acc</span>
+                      <span className="text-text-primary">{cycleResult.directional_acc != null ? (cycleResult.directional_acc * 100).toFixed(1) + '%' : '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">MIA AUC</span>
+                      <span className="text-text-primary">{cycleResult.mia_auc?.toFixed(3) ?? '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Duration</span>
+                      <span className="text-text-primary">{cycleResult.duration_sec != null ? `${cycleResult.duration_sec}s` : '—'}</span>
+                    </div>
+                  </div>
+                  {cycleResult.gate_failure && (
+                    <div className="text-accent-warning text-[10px] mt-1">
+                      Gate failure: {cycleResult.gate_failure}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Panel 3: Poison Injector */}

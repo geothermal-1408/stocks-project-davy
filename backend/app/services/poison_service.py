@@ -53,6 +53,7 @@ async def log_poison_event(
     sigma: Optional[float] = None,
     swing_ratio: Optional[float] = None,
     vol_ratio: Optional[float] = None,
+    buffered: bool = True,
 ) -> PoisonEvent:
     """Log a poison detection event to the database.
 
@@ -75,10 +76,11 @@ async def log_poison_event(
         sigma=sigma,
         swing_ratio=swing_ratio,
         vol_ratio=vol_ratio,
+        buffered=buffered,
     )
     db.add(event)
     await db.commit()
-    logger.info(f"Logged poison event: {poison_type} for {ticker}")
+    logger.info(f"Logged poison event: {poison_type} for {ticker} (buffered={buffered})")
     return event
 
 

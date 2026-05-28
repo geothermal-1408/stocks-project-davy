@@ -165,11 +165,19 @@ class CycleManager:
             if os.path.exists(forget_path):
                 with open(forget_path) as f:
                     forget_count = sum(1 for _ in f)
+                    
+            retain_count = 0
+            if os.path.exists(retain_path):
+                with open(retain_path) as f:
+                    retain_count = sum(1 for _ in f)
 
             if forget_count == 0:
                 logger.warning("No forget buffer data — skipping cycle")
                 return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_forget_buffer"}
-
+                
+            if retain_count == 0:
+                logger.warning("No retain buffer data — skipping cycle")
+                return {"cycle_num": cycle_num, "skipped": True, "reason": "empty_retain_buffer"}
             # --- Step 2: Run unlearning ---
             _notify(callback, "unlearning", 30)
             current_model = registry.get_current_model_path()
@@ -259,9 +267,9 @@ class CycleManager:
                 from stocksense.evaluation.prediction_eval import evaluate_predictions
                 ticker = os.environ.get("TICKER", "AAPL")
                 pred_results = evaluate_predictions(
-                    model_path=superlearn_output,
-                    data_base=self.data_base,
-                    ticker=ticker,
+                    superlearn_output,
+                    self.data_base,
+                    ticker,
                     window_size=30,
                     n_eval_windows=10 if max_steps > 0 else 30
                 )
@@ -287,7 +295,16 @@ class CycleManager:
                     if mia_results:
                         new_metrics.mia_auc = max(mia_results.values())
                 else:
-                    logger.info("No pre-tokenized eval data for MIA — skipping MIA evaluation")
+                    logger.info("No pre-tokenized eval data for MIA — computing from buffer files")
+                    mia_output = os.path.join(cycle_dir, "mia")
+                    mia_results = run_mia(
+                        model_path=superlearn_output,
+                        forget_data_path=forget_path,
+                        retain_data_path=retain_path,
+                        output_dir=mia_output
+                    )
+                    if mia_results:
+                        new_metrics.mia_auc = max(mia_results.values())
             except Exception as e:
                 logger.warning(f"MIA evaluation failed: {e}")
 

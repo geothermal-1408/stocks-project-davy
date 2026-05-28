@@ -170,8 +170,12 @@ export default function PoisonLogPage() {
                 <span className="text-text-muted text-[10px]">
                   {event.window_start.slice(5)} → {event.window_end.slice(5)}
                 </span>
-                <span className={event.buffered ? 'text-accent-mint' : 'text-text-muted'}>
-                  {event.buffered ? 'BUFFERED' : 'PENDING'}
+                <span className={`font-mono text-[10px] px-1.5 py-0.5 border ${
+                  event.buffered 
+                    ? 'text-accent-mint border-accent-mint/40 bg-accent-mint/5' 
+                    : 'text-accent-warning border-accent-warning/40 bg-accent-warning/5'
+                }`}>
+                  {event.buffered ? 'BUFFERED' : 'DETECTED'}
                 </span>
                 <span className="text-text-muted truncate">{event.reason}</span>
               </div>
