@@ -270,34 +270,45 @@ class CycleManager:
                 forget_tok = os.path.join(tokenized_base, "stock", "forget", "normal", "tokenized_dataset.pt")
                 retain_tok = os.path.join(tokenized_base, "stock", "retain", "normal", "tokenized_dataset.pt")
                 eval_output = os.path.join(cycle_dir, "eval")
+                
+                max_samples = 40 if max_steps > 0 else None
 
                 if os.path.exists(forget_tok) and os.path.exists(retain_tok):
-                    # Path A: pre-tokenized .pt datasets exist
-                    from stocksense.evaluation.run_eval import evaluate_model
+                    if max_samples:
+                        logger.info(f"DEV MODE: Limiting pre-tokenized PPL eval to {max_samples} samples")
                     eval_results = evaluate_model(
-                        superlearn_output, forget_tok, retain_tok, eval_output,
+                        superlearn_output, forget_tok, retain_tok, eval_output, max_eval_samples=max_samples
                     )
                     new_metrics.forget_ppl = eval_results.get("forget", {}).get("ppl", 0)
                     new_metrics.retain_ppl = eval_results.get("retain", {}).get("ppl", 0)
-                elif os.path.exists(forget_path) or os.path.exists(retain_path):
-                    # Path B: evaluate from JSONL buffer files directly
+                    new_metrics.forget_acc = eval_results.get("forget", {}).get("acc", 0)
+                    new_metrics.retain_acc = eval_results.get("retain", {}).get("acc", 0)
+                else:
                     logger.info("No pre-tokenized .pt files — evaluating PPL from JSONL buffers")
+                    if max_samples:
+                        logger.info(f"DEV MODE: Limiting PPL eval to {max_samples} samples per buffer")
+                        
                     try:
                         from stocksense.evaluation.run_eval import evaluate_from_jsonl
-                        jsonl_results = evaluate_from_jsonl(
-                            model_path=superlearn_output,
-                            forget_jsonl=forget_path,
-                            retain_jsonl=retain_path,
+                        eval_results = evaluate_from_jsonl(
+                            superlearn_output, 
+                            forget_path, 
+                            retain_path, 
+                            max_eval_samples=max_samples
                         )
-                        new_metrics.forget_ppl = jsonl_results.get("forget_ppl", 0)
-                        new_metrics.retain_ppl = jsonl_results.get("retain_ppl", 0)
+                        new_metrics.forget_ppl = eval_results.get("forget_ppl", 0)
+                        new_metrics.retain_ppl = eval_results.get("retain_ppl", 0)
+                        new_metrics.forget_acc = eval_results.get("forget_acc", 0)
+                        new_metrics.retain_acc = eval_results.get("retain_acc", 0)
+                        
+                        os.makedirs(eval_output, exist_ok=True)
+                        with open(os.path.join(eval_output, "eval_results.json"), "w") as f:
+                            json.dump(eval_results, f, indent=2)
                     except Exception as e_jsonl:
                         logger.warning(f"JSONL eval failed, using lightweight PPL: {e_jsonl}")
                         new_metrics.forget_ppl, new_metrics.retain_ppl = _compute_ppl_from_buffers(
                             superlearn_output, forget_path, retain_path
                         )
-                else:
-                    logger.warning("No eval data available (no .pt and no JSONL buffers)")
             except Exception as e:
                 logger.warning(f"Evaluation failed: {e}")
                 # Lightweight PPL fallback
@@ -486,7 +497,7 @@ def _compute_ppl_from_buffers(
     from stocksense.data.buffer_tokenizer import tokenize_buffer
 
     logger.info(f"Loading model from {model_path} for PPL eval")
-    model, tokenizer = load_model_and_tokenizer(model_path)
+    model, tokenizer = load_model_and_tokenizer(model_path, auto_device=True)
     model.eval()
 
     device = next(model.parameters()).device

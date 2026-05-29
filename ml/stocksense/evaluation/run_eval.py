@@ -39,6 +39,7 @@ def evaluate_model(
     retain_data_path: str,
     output_dir: str,
     seed: int = 42,
+    max_eval_samples: int = None,
 ) -> dict:
     """Evaluate a model on forget and retain datasets.
 
@@ -60,6 +61,12 @@ def evaluate_model(
     # Load datasets
     forget_ds = torch.load(forget_data_path, weights_only=False)
     retain_ds = torch.load(retain_data_path, weights_only=False)
+
+    if max_eval_samples is not None:
+        if len(forget_ds) > max_eval_samples:
+            forget_ds = forget_ds.select(range(max_eval_samples))
+        if len(retain_ds) > max_eval_samples:
+            retain_ds = retain_ds.select(range(max_eval_samples))
 
     def preprocess_logits(logits, labels):
         if isinstance(logits, tuple):
@@ -161,7 +168,7 @@ def evaluate_from_jsonl(
     from stocksense.data.buffer_tokenizer import tokenize_buffer
     from stocksense.utils.model_utils import load_model_and_tokenizer
 
-    model, tokenizer = load_model_and_tokenizer(model_path)
+    model, tokenizer = load_model_and_tokenizer(model_path, auto_device=True)
     model.eval()
 
     results = {}

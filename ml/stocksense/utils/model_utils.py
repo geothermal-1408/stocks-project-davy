@@ -27,7 +27,13 @@ def load_model_and_tokenizer(
     - Git LFS pointer detection
     - pre-Ampere GPU compatibility (no bf16)
     """
-    torch_dtype = torch.float32
+    def _supports_tf32():
+        if not torch.cuda.is_available():
+            return False
+        return torch.cuda.get_device_capability(0)[0] >= 8
+
+    # Use bfloat16 natively if supported, otherwise float32 (required for fp16 AMP training)
+    torch_dtype = torch.bfloat16 if _supports_tf32() else torch.float32
 
     params = {
         "torch_dtype": torch_dtype,

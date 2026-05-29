@@ -172,8 +172,10 @@ def run_unlearn(
                     data_collator=AscentPlusDescentDataCollator(tokenizer),
                 )
             else:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
                 params = {
-                    "torch_dtype": torch.bfloat16 if _supports_tf32() else torch.float32,
+                    "torch_dtype": torch.bfloat16 if _supports_tf32() else torch.float16,
                     "trust_remote_code": True,
                 }
                 pretrained_model = AutoModelForCausalLM.from_pretrained(

@@ -3,6 +3,7 @@ config.py — Application settings loaded from environment variables.
 """
 
 import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 from typing import Optional
 from pydantic_settings import BaseSettings
 
@@ -43,7 +44,7 @@ class Settings(BaseSettings):
     # --- Unlearn Config ---
     FORGET_TRIGGER: int = 5
     MIN_RETAIN_SIZE: int = 20
-    UNLEARN_METHOD: str = "ascent_plus_descent"
+    UNLEARN_METHOD: str = "ascent_plus_kl_divergence"
     LEARNING_RATE: float = 5e-6
     FINETUNE_EPOCHS: int = 1
 
